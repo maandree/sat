@@ -19,6 +19,11 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+
+#include "client.h"
 
 
 
@@ -41,6 +46,16 @@ usage(void)
 }
 
 
+/**
+ * Run all queued jobs even if it is not time yet.
+ * 
+ * @param   argc  Should be 1 or 0.
+ * @param   argv  The command line, should only include the name of the process.
+ * @return  0     The process was successful.
+ * @return  1     The process failed queuing the job.
+ * @return  2     User error, you do not know what you are doing.
+ * @return  3     satd(1) failed.
+ */
 int
 main(int argc, char *argv[])
 {
@@ -50,6 +65,8 @@ main(int argc, char *argv[])
 		argv0 = argv[0];
 	}
 
-	/* TODO tell the daemon to start running jobs even if it is not time yet. */
+	if (send_command(1, NULL))
+		return errno ? (perror(argv0), 1) : 3;
+	return 0;
 }
 

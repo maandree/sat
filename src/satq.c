@@ -21,6 +21,9 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+
+#include "client.h"
 
 
 
@@ -43,6 +46,16 @@ usage(void)
 }
 
 
+/**
+ * Print all queued jobs.
+ * 
+ * @param   argc  Should be 1 or 0.
+ * @param   argv  The command line, should only include the name of the process.
+ * @return  0     The process was successful.
+ * @return  1     The process failed queuing the job.
+ * @return  2     User error, you do not know what you are doing.
+ * @return  3     satd(1) failed.
+ */
 int
 main(int argc, char *argv[])
 {
@@ -52,6 +65,8 @@ main(int argc, char *argv[])
 		argv0 = argv[0];
 	}
 
-	/* TODO print the job queue */
+	if (send_command(0, NULL))
+		return errno ? (perror(argv0), 1) : 3;
+	return 0;
 }
 
