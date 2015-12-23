@@ -21,7 +21,8 @@ RATIONALE
 
 	sat does not do natural language time parsing, it is far too complex,
 	and locale dependent, for all programs to implemeent and should be
-	done in a separate program. sat does however do some trivial parsing.
+	done in a separate program. Not even GNU date(1) gets this right.
+	sat does however do some trivial parsing.
 
 	sat does not sanitise the environment. You have env(1) for that.
 	Relaying on sat to sanitise the environment appropriately could prove
