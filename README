@@ -1,0 +1,33 @@
+NAME
+	sat - A simple implementation of at(1), with some incompatibility
+
+DESCRIPTION
+	sat is a simple implementation of at(1). But is not fully compatible
+	with at(1). It is used to queue jobs to be executed later, outside
+	the current controlling terminal.
+
+	sat can also print and edit the list of queued jobs.
+
+RATIONALE
+	at(1) is far too complex.
+
+	sat does not do natural language time parsing, it is far too complex,
+	and locale dependent, for all programs to implemeent and should be
+	done in a separate program.
+
+	sat does not sanitise the environment. You have env(1) for that.
+	Relaying on sat to sanitise the environment appropriately could prove
+	to be a misfortune.
+
+	sat does not do mailing because that is very restrictive, hooks are
+	used instead.
+
+ENVIRONMENY
+	XDG_RUNTIME_DIR
+		This environment variable names the directory in which
+		interprocess communication related files are stored. If
+		unset or empty, /run is used.
+
+SEE ALSO
+	at(1), cron(1), sleep-until(1)
+
