@@ -34,6 +34,10 @@ RATIONALE
 	sat does not do system load analysis, this should be done in a
 	separate program.
 
+	at(1) should not be merged into cron(8). cron(8) does recurring
+	scheduled jobs, at(1) does one-time unscheduled jobs. atq(1) does
+	not translate to cron(8).
+
 ENVIRONMENY
 	XDG_RUNTIME_DIR
 		This environment variable names the directory in which
