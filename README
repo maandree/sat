@@ -31,6 +31,9 @@ RATIONALE
 	sat does not do mailing because that is very restrictive, hooks are
 	used instead.
 
+	sat does not do system load analysis, this should be done in a
+	separate program.
+
 ENVIRONMENY
 	XDG_RUNTIME_DIR
 		This environment variable names the directory in which
