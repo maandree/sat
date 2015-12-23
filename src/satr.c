@@ -22,9 +22,34 @@
 
 
 
+/**
+ * The name of the process.
+ */
+char *argv0 = "satr";
+
+
+
+/**
+ * Print usage information.
+ */
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: %s\n",
+	        strrchr(argv0) ? (strrchr(argv0) + 1) : argv0);
+	exit(2);
+}
+
+
 int
 main(int argc, char *argv[])
 {
+	if (argc > 1) {
+		usage();
+	} else if (argc == 1) {
+		argv0 = argv[0];
+	}
+
 	/* TODO tell the daemon to start running jobs even if it is not time yet. */
 }
 
