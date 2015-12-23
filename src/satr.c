@@ -59,11 +59,8 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	if (argc > 1) {
-		usage();
-	} else if (argc == 1) {
-		argv0 = argv[0];
-	}
+	if (argc > 0)  argv0 = argv[0];
+	if (argc > 1)  usage();
 
 	if (send_command(1, NULL))
 		return errno ? (perror(argv0), 1) : 3;
