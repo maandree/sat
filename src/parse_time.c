@@ -41,6 +41,16 @@
  */
 #define FAIL(e)  return errno = (e), -1
 
+/**
+ * `a *= b` with overflow check.
+ */
+#define MUL(a, b)  if (a > timemax / (b))  FAIL(ERANGE);  else  a *= (b)
+
+/**
+ * `a += b` with overflow check.
+ */
+#define ADD(a, b)  if (a > timemax - (b))  FAIL(ERANGE);  else  a += (b)
+
 
 
 /**
@@ -107,9 +117,6 @@ strtotime(const char *str, const char **end)
 static int
 parse_time_time(const char *str, struct timespec *ts, const char **end)
 {
-#define MUL(a, b)  if (a > timemax / (b))  FAIL(ERANGE);  else  a *= (b)
-#define ADD(a, b)  if (a > timemax - (b))  FAIL(ERANGE);  else  a += (b)
-
 	char *end;
 	time_t t;
 	const time_t timemax = (sizeof(time_t) == sizeof(long long int)) ? LLONG_MAX : LONG_MAX;
@@ -204,6 +211,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	int plus = *str == '+';
 	char *start = str;
 	char *end;
+	time_t adj;
 
 	/* Get current time and clock. */
 	clock_gettime(CLOCK_REALTIME, &now);
@@ -220,7 +228,8 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	if (strchr(str, ':')) {
 		if (parse_time_time(str, ts, &end))
 			return -1;
-		ts->tv_sec += now.sec - (now.sec % ONE_DAY);
+		adj = now.sec - (now.sec % ONE_DAY);
+		ADD(ts->tv_sec, adj); /* In case the HH is really large. */
 	} else {
 		if (parse_time_seconds(str + plus, ts, &end))
 			return -1;
