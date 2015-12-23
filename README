@@ -1,8 +1,8 @@
 NAME
-	sat - A simple implementation of at(1), with some incompatibility
+	sat - A simple incompatibility implementation of at(1).
 
 DESCRIPTION
-	sat is a simple implementation of at(1). But is not fully compatible
+	sat is a simple implementation of at(1). But is not compatible
 	with at(1). It is used to queue jobs to be executed later, outside
 	the current controlling terminal.
 
