@@ -145,6 +145,8 @@ main(int argc, char *argv[], char *envp[])
 		goto fail;
 	store_array(store_array(message, argv), envp);
 
+	/* TODO start atd (if not started) and queue the job */
+
 fail:
 	perror(argv0);
 	return 1;
