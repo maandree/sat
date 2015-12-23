@@ -156,7 +156,7 @@ int daemonise(const char* name, int flags)
       return errno = EINVAL, -1;
   
   
-  /* Close all files except stdin, stdou, and stderr. */
+  /* Close all files except stdin, stdout, and stderr. */
   if ((flags & DAEMONISE_NO_CLOSE) == 0)
     {
       if (getrlimit(RLIMIT_NOFILE, &rlimit))
