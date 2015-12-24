@@ -19,12 +19,46 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+
+
+/**
+ * The name of the process.
+ */
+char *argv0 = "satr";
+
+
+
+/**
+ * Print usage information.
+ */
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: [-f] %s\n",
+	        strrchr(argv0) ? (strrchr(argv0) + 1) : argv0);
+	exit(2);
+}
 
 
 int
 main(int argc, char *argv[])
 {
+	int foreground = 0;
+
+	if (argc > 0)
+		argv0 = argv[0];
+	if (argc > 2)
+		usage();
+	if (argc == 2) {
+		if (strcmp(argv[1], "-f"))
+			usage();
+		foreground = 1;
+	}
+
 	/* TODO guess what, this is going to be the daemon */
 }
 
