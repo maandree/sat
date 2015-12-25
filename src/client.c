@@ -33,21 +33,16 @@ extern char *argv0;
 /**
  * Send a command to satd. Start satd if it is not running.
  * 
- * If `n` is 0 but `msg` is not `NULL`, `msg` is a
- * NUL-terminated string with the ID of the job to
- * remove for the queue. `msg` should otherwise,
- * unless it is `NULL` be the command the run, followed
- * by its environment.
- * 
- * @param   n    The length of the message, or a number
- *               number to send if `msg` is `NULL`.
+ * @param   cmd  Command type.
+ * @param   n    The length of the message, 0 if `msg` is
+ *               `NULL` or NUL-terminated.
  * @param   msg  The message to send.
  * @return       Zero on success.
  * 
  * @throws  0  Error at the daemon-side.
  */
 int
-send_command(size_t n, const char *restrict msg)
+send_command(enum command cmd, size_t n, const char *restrict msg)
 {
 	return 0 /* TODO */
 }

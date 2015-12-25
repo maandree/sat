@@ -63,7 +63,7 @@ main(int argc, char *argv[])
 	if (argc > 0)   argv0 = argv[0];
 	if (argc != 2)  usage();
 
-	if (send_command(0, argv[1]))
+	if (send_command(SAT_REMOVE, 0, argv[1]))
 		return errno ? (perror(argv0), 1) : 3;
 	return 0;
 }

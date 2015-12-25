@@ -62,7 +62,7 @@ main(int argc, char *argv[])
 	if (argc > 0)  argv0 = argv[0];
 	if (argc > 1)  usage();
 
-	if (send_command(0, NULL))
+	if (send_command(SAT_PRINT, 0, NULL))
 		return errno ? (perror(argv0), 1) : 3;
 	return 0;
 }
