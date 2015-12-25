@@ -60,7 +60,7 @@ int
 main(int argc, char *argv[])
 {
 	if (argc > 0)  argv0 = argv[0];
-	if (argc > 1)  usage();
+	if (argc > 1)  usage(); /* TODO possibility to select job */
 
 	if (send_command(1, NULL))
 		return errno ? (perror(argv0), 1) : 3;
