@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "daemonise.h"
+
 
 
 /**
@@ -59,6 +61,15 @@ main(int argc, char *argv[])
 		foreground = 1;
 	}
 
-	/* TODO guess what, this is going to be the daemon */
+	if (foreground ? 0 : daemonise(0))
+		goto fail;
+
+	undaemonise();
+	return 0;
+
+fail:
+	perror(argv0);
+	undaemonise();
+	return 1;
 }
 

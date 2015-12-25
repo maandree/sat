@@ -19,12 +19,13 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  * 
- * This file is copied from <http:/github.com/maandree/slibc>.
+ * This file is copied from <http://github.com/maandree/slibc>.
  */
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/resource.h>
 
@@ -34,6 +35,11 @@
  * The process's environment variables.
  */
 extern char** environ;
+
+/**
+ * The pidfile created by `daemonise`.
+ */
+static char* __pidfile = NULL;
 
 
 
@@ -99,6 +105,8 @@ extern char** environ;
  * If $XDG_RUNTIME_DIR is set and is not empty, its value
  * should be used instead of /run for the runtime data-files
  * directory, in which the PID file is stored.
+ * 
+ * This is a slibc extension.
  * 
  * @etymology  (Daemonise) the process!
  * 
@@ -225,18 +233,26 @@ int daemonise(const char* name, int flags)
   run = getenv("XDG_RUNTIME_DIR");
   if (run && *run)
     {
-      pidpath = alloca(sizeof("/.pid") + (strlen(run) + strlen(name)) * sizeof(char));
+      pidpath = malloc(sizeof("/.pid") + (strlen(run) + strlen(name)) * sizeof(char));
+      t (pidfile == NULL);
       stpcpy(stpcpy(stpcpy(stpcpy(pidpath, run), "/"), name), ".pid");
     }
   else
     {
-      pidpath = alloca(sizeof("/run/.pid") + strlen(name) * sizeof(char));
+      pidpath = malloc(sizeof("/run/.pid") + strlen(name) * sizeof(char));
+      t (pidfile == NULL);
       stpcpy(stpcpy(stpcpy(pidpath, "/run/"), name), ".pid");
     }
   fd = open(pidpath, O_WRONLY | O_CREAT | O_EXCL, 0644);
-  t (fd == -1);
+  if (fd == -1)
+    {
+      saved_errno = errno;
+      free(pidpath), pidpath = NULL;
+      errno = saved_errno;
+      goto fail;
+    }
   pid = getpid();
-  t (dprintf(fd, "%lli\n", (long long int)pid) < 0);
+  t (dprintf(fd, "%lli\n", (long long int)pid)) < 0;
   t (close(fd) && (errno != EINTR));
  no_pid_file:
   
@@ -264,16 +280,45 @@ int daemonise(const char* name, int flags)
     {
       if (flags & DAEMONISE_KEEP_STDERR)
 	return -1;
+      undaemonise();
       abort(); /* Do not overcomplicate things, just abort in this unlikely event. */
     }
   
   return 0;
  fail:
-  saved_errno = err;
+  saved_errno = errno;
   if (pipe_rw[0] >= 0)  close(pipe_rw[0]);
   if (pipe_rw[1] >= 0)  close(pipe_rw[1]);
   if (fd         >= 0)  close(fd);
   errno = saved_errno;
   return -1;
+}
+
+
+/**
+ * Remove the PID file created by `daemonise`. This shall
+ * always be called before exiting after calling `daemonise`,
+ * even if it failed.
+ * 
+ * This is a slibc extension.
+ * 
+ * @etymology  (Un)link PID file created by `(daemonise)`!
+ * 
+ * @return  Zero on success, -1 on error.
+ * 
+ * @throws  Any error specified for unlink(3).
+ * 
+ * @since  Always.
+ */
+int undaemonise(void)
+{
+  int r, saved_errno;
+  if (pidfile == NULL)
+    return 0;
+  r = unlink(pidfile);
+  saved_errno = errno;
+  free(pidfile), pidfile = NULL;
+  errno = saved_errno;
+  return r;
 }
 
