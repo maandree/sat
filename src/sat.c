@@ -69,8 +69,8 @@ main(int argc, char *argv[], char *envp[])
 {
 	struct timespec ts;
 	clockid_t clk;
-	char *message;
-	size_t message_size;
+	char *msg = NULL;
+	size_t n;
 
 	if ((argc < 3) || (argv[1][0] == '-')) {
 		usage();
@@ -105,16 +105,25 @@ main(int argc, char *argv[], char *envp[])
 	argv += 2;
 
 	/* Construct message to send to the daemon. */
-	message_size = measure_array(argv) + measure_array(envp);
-	message = malloc(message_size);
-	if (!message)
+	n = measure_array(argv) + measure_array(envp);
+	if (!(msg = malloc(n + sizeof(clk) + sizeof(ts))))
 		goto fail;
-	store_array(store_array(message, argv), envp);
+	store_array(store_array(msg, argv), envp);
+	memcpy(msg + n, clk, sizeof(clk));
+	memcpy(msg + n + sizeof(clk), ts, sizeof(ts));
 
-	/* TODO start atd (if not started) and queue the job */
+	/* Send job to daemon, start daemon if necessary. */
+	if (send_command(SAT_QUEUE, n, msg)) {
+		if (errno)
+			goto fail;
+		free(msg);
+		return 3;
+	}
+	return 0;
 
 fail:
 	perror(argv0);
+	free(msg);
 	return 1;
 }
 
