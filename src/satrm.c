@@ -40,7 +40,7 @@ char *argv0 = "satrm";
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s JOB-ID\n",
+	fprintf(stderr, "usage: %s JOB-ID...\n",
 	        strrchr(argv0) ? (strrchr(argv0) + 1) : argv0);
 	exit(2);
 }
@@ -60,11 +60,33 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	if (argc > 0)   argv0 = argv[0];
-	if (argc != 2)  usage();
+	size_t n;
+	char *msg;
+	int i;
 
-	if (send_command(SAT_REMOVE, 0, argv[1]))
-		return errno ? (perror(argv0), 1) : 3;
+	if (argc > 0)  argv0 = argv[0];
+	if (argc < 2)  usage();
+	if (!strcmp(argv[1], "--")
+		argv++, argc--;
+	for (i = 1; i < argc; i++)
+		if (argv[i][0] == '-')
+			usage();
+
+	if (!(msg = malloc(n = measure_array(argv + 1))))
+		goto fail;
+	store_array(msg, argv + 1);
+
+	if (send_command(SAT_REMOVE, n, msg)) {
+		if (errno)
+			goto fail;
+		free(msg);
+		return 3;
+	}
 	return 0;
+
+fail:
+	perror(*argv);
+	free(msg);
+	return 1;
 }
 

@@ -22,6 +22,7 @@
 #include <stddef.h>
 
 
+
 /**
  * Commands for `send_command`.
  */
@@ -49,6 +50,7 @@ enum command
   };
 
 
+
 /**
  * Send a command to satd. Start satd if it is not running.
  * 
@@ -61,4 +63,22 @@ enum command
  * @throws  0  Error at the daemon-side.
  */
 int send_command(enum command cmd, size_t n, const char *restrict msg);
+
+
+/**
+ * Return the number of bytes required to store a string array.
+ * 
+ * @param   array  The string array.
+ * @return         The number of bytes required to store the array.
+ */
+size_t measure_array(char *array[])
+
+/**
+ * Store a string array.
+ * 
+ * @param   storage  The buffer where the array is to be stored.
+ * @param   array    The array to store.
+ * @return           Where in the buffer the array ends.
+ */
+char *store_array(char *restrict storage, char *array[]);
 

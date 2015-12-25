@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #include "parse_time.h"
+#include "client.h"
 
 
 
@@ -44,41 +45,6 @@ usage(void)
 	fprintf(stderr, "usage: %s TIME COMMAND...\n",
 	        strrchr(argv0) ? (strrchr(argv0) + 1) : argv0);
 	exit(2);
-}
-
-
-/**
- * Return the number of bytes required to store a string array.
- * 
- * @param   array  The string array.
- * @return         The number of bytes required to store the array.
- */
-static size_t
-measure_array(char *array[])
-{
-	size_t rc = 1;
-	for (; *array; array++)
-		rc += strlen(*array) + 1;
-	return rc * sizeof(char);
-}
-
-
-/**
- * Store a string array.
- * 
- * @param   storage  The buffer where the array is to be stored.
- * @param   array    The array to store.
- * @return           Where in the buffer the array ends.
- */
-static char *
-store_array(char *restrict storage, char *array[])
-{
-	for (; *array; array++) {
-		storage = stpcpy(storage, *array);
-		*storage++ = 0;
-	}
-	*storage++ = 0;
-	return storage;
 }
 
 
