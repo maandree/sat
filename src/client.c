@@ -59,7 +59,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 size_t
 measure_array(char *array[])
 {
-	size_t rc = 1;
+	size_t rc = 0;
 	for (; *array; array++)
 		rc += strlen(*array) + 1;
 	return rc * sizeof(char);
@@ -80,7 +80,6 @@ store_array(char *restrict storage, char *array[])
 		storage = stpcpy(storage, *array);
 		*storage++ = 0;
 	}
-	*storage++ = 0;
 	return storage;
 }
 

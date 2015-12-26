@@ -63,16 +63,18 @@ main(int argc, char *argv[])
 	char *msg = NULL;
 	int i;
 
-	if (argc > 0)  argv0 = argv[0];
+	if (argc > 0)
+		argv0 = argv[0];
 	if (argc < 2)
 		goto run;
-	if (!strcmp(argv[1], "--")
+	if (!strcmp(argv[1], "--"))
 		argv++, argc--;
 	for (i = 1; i < argc; i++)
 		if (argv[i][0] == '-')
 			usage();
 
-	if (!(msg = malloc(n = measure_array(argv + 1))))
+	n = measure_array(argv + 1);
+	if (n ? !(msg = malloc(n)) : 0)
 		goto fail;
 	store_array(msg, argv + 1);
 
