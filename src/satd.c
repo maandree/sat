@@ -22,8 +22,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <grp.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
 
 #include "daemonise.h"
+
+
+#define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
 
 
 
@@ -46,10 +53,69 @@ usage(void)
 }
 
 
+/**
+ * Get the group ID of a group.
+ * 
+ * @param   name      The name of the group.
+ * @param   fallback  The group ID to return if the group is not found.
+ * @return            The ID of the group, -1 on error.
+ */
+static gid_t
+getgroup(const char* name, gid_t fallback)
+{
+	struct group *g;
+	if (!(g = getgrnam(name)))
+		return errno ? (gid_t)-1 : fallback;
+	return g->gr_gid;
+}
+
+
+/**
+ * Create the socket.
+ * 
+ * @param   address  Output parameter for the socket address.
+ * @return           The file descriptor for the socket, -1 on error.
+ */
+static int
+create_socket(struct sockaddr_un *address)
+{
+	int fd = -1;
+	ssize_t len;
+	char *dir;
+	gid_t group;
+
+	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run")
+	t (snprintf(NULL, 0, "%s/satd.socket%zn", dir, &len) == -1);
+	if ((len < 0) || (len >= sizeof(address->sun_path))) {
+		errno = ENAMETOOLING;
+		goto fail;
+	}
+	sprintf(address->sun_path, "%s/satd.socket", dir)
+	address->sun_family = AF_UNIX;
+	/* TODO test flock */
+	unlink(address->sun_path);
+	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
+	t (fchmod(fd, S_IRWXU) == -1);
+	t ((group = getgroup("nobody", 0)) == -1);
+	t (fchown(fd, getuid(), group) == -1);
+	t (bind(fd, (struct sockaddr *)address, sizeof(*address)) == -1);
+	/* TODO flock */
+
+	return fd;
+fail:
+	saved_errno = errno;
+	if (fd >= 0)
+		close(fd);
+	errno = saved_errno;
+	return -1;
+}
+
+
 int
 main(int argc, char *argv[])
 {
-	int foreground = 0;
+	struct sockaddr_un address;
+	int sock = -1, foreground = 0;
 
 	if (argc > 0)
 		argv0 = argv[0];
@@ -61,14 +127,21 @@ main(int argc, char *argv[])
 		foreground = 1;
 	}
 
-	if (foreground ? 0 : daemonise(0))
-		goto fail;
+	t (foreground ? 0 : daemonise("satd", 0));
 
+	t (sock = create_socket(&address), sock == -1);
+
+	close(sock);
+	unlink(address.sun_path);
 	undaemonise();
 	return 0;
 
 fail:
 	perror(argv0);
+	if (sock >= 0) {
+		close(sock);
+		unlink(address.sun_path);
+	}
 	undaemonise();
 	return 1;
 }
