@@ -30,7 +30,7 @@
 /**
  * The name of the process.
  */
-char *argv0 = "satr";
+char *argv0 = "satd";
 
 
 
