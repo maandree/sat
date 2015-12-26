@@ -109,8 +109,8 @@ main(int argc, char *argv[], char *envp[])
 	if (!(msg = malloc(n + sizeof(clk) + sizeof(ts))))
 		goto fail;
 	store_array(store_array(msg, argv), envp);
-	memcpy(msg + n, clk, sizeof(clk));
-	memcpy(msg + n + sizeof(clk), ts, sizeof(ts));
+	memcpy(msg + n, clk, sizeof(clk)), n += sizeof(clk);
+	memcpy(msg + n, ts,  sizeof(ts)),  n += sizeof(ts);
 
 	/* Send job to daemon, start daemon if necessary. */
 	if (send_command(SAT_QUEUE, n, msg)) {
