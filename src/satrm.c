@@ -21,6 +21,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 #include "client.h"
@@ -69,7 +70,7 @@ main(int argc, char *argv[])
 	if (!strcmp(argv[1], "--")
 		argv++, argc--;
 	for (i = 1; i < argc; i++)
-		if (argv[i][0] == '-')
+		if (strchr("-", argv[i][0]))
 			usage();
 
 	if (!(msg = malloc(n = measure_array(argv + 1))))
