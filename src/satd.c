@@ -140,6 +140,10 @@ main(int argc, char *argv[])
 	t (foreground ? 0 : daemonise("satd", 0));
 
 	t (sock = create_socket(&address), sock == -1);
+	if (sock != 3) {
+		t (dup2(sock, 3) == -1);
+		close(sock), sock = 3;
+	}
 
 	close(sock);
 	unlink(address.sun_path);
