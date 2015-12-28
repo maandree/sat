@@ -90,6 +90,7 @@ does_not_exist:
 	t (fchmod(fd, S_IRWXU) == -1);
 	t (fchown(fd, getuid(), getgid()) == -1);
 	t (bind(fd, (struct sockaddr *)address, sizeof(*address)) == -1);
+	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
 
 	/* Mark the socket as owned by a living process. */
 	t (flock(fd, LOCK_SH));
