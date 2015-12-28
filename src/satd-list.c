@@ -26,7 +26,7 @@
 
 /**
  * Quote a string, in shell (Bash-only if necessary) compatible
- * format, if necessary. Here, just adding quots around all not
+ * format, if necessary. Here, just adding quotes around all not
  * do. The string must be single line, and there must not be
  * any invisible characters; it should be possible to copy
  * a string from the terminal by marking it, hence all of this
