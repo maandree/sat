@@ -38,7 +38,7 @@ RATIONALE
 	scheduled jobs, at(1) does one-time unscheduled jobs. atq(1) does
 	not translate to cron(8).
 
-ENVIRONMENY
+ENVIRONMENT
 	XDG_RUNTIME_DIR
 		This environment variable names the directory in which
 		interprocess communication related files are stored. If
