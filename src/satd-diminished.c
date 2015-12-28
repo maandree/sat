@@ -76,9 +76,10 @@ main(int argc, char *argv[])
 	shutdown(fd, SHUT_RDWR);
 	close(fd);
 
-	close(SOCK_FILENO);
 	unlink(argv[1]);
 	unlink(argv[2]); /* Only on success! */
+	close(SOCK_FILENO);
+	close(STATE_FILENO);
 	return 0;
 	(void) argc;
 }

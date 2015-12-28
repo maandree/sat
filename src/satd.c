@@ -273,8 +273,8 @@ fail:
 		perror(argv0);
 	free(path);
 	if (sock >= 0) {
-		close(sock);
 		unlink(address.sun_path);
+		close(sock);
 	}
 	if (state >= 0)
 		close(state);
