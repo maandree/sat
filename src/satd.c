@@ -196,9 +196,6 @@ main(int argc, char *argv[])
 	else if ((path = getenv("SATD_SOCKET_PATH")))
 		have_socket = S_ISSOCK(attr.st_mode);
 
-	/* Daemonise. */
-	t (foreground ? 0 : daemonise("satd", have_socket ? DAEMONISE_KEEP_STDIN : 0));
-
 	/* Get or create socket. */
 	if (have_socket) {
 		if (strlen(path) >= sizeof(address.sun_path))
@@ -231,6 +228,13 @@ main(int argc, char *argv[])
 #else
 	t (listen(sock, SATD_BACKLOG));
 #endif
+
+	/* Daemonise. */
+	if (!foreground) {
+		int flags = have_socket ? DAEMONISE_KEEP_STDIN : 0;
+		flags |= DAEMONISE_KEEP_FDS;
+		t (daemonise("satd", flags, sock, -1));
+	}
 
 	close(sock);
 	unlink(address.sun_path);

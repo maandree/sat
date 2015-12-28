@@ -78,6 +78,12 @@
  */
 #define DAEMONISE_KEEP_STDOUT  512
 
+/**
+ * Enables you to select additional
+ * file descritors to keep open.
+ */
+#define DAEMONISE_KEEP_FDS  1024
+
 
 
 /**
@@ -159,25 +165,40 @@
  *                 -  `DAEMONISE_CLOSE_STDERR`
  *                 -  `DAEMONISE_KEEP_STDIN`
  *                 -  `DAEMONISE_KEEP_STDOUT`
+ *                 -  `DAEMONISE_KEEP_FDS`
+ * @parma   ...    Enabled if `DAEMONISE_KEEP_FDS` is used,
+ *                 do not add anything if `DAEMONISE_KEEP_FDS`
+ *                 is unused. This is a `-1`-terminated list
+ *                 of file descritors to keep open. 0, 1, and 2
+ *                 are implied by `DAEMONISE_KEEP_STDIN`,
+ *                 `DAEMONISE_KEEP_STDOUT`, and `DAEMONISE_KEEP_STDERR`,
+ *                 respectively. All arguments are of type `int`.
  * @return         Zero on success, -1 on error.
  * 
  * @throws  EEXIST  The PID file already exists on the system.
  *                  Unless your daemon supervisor removs old
  *                  PID files, this could mean that the daemon
  *                  has exited without removing the PID file.
+ * @throws  EINVAL  `flags` contains an unsupported bit, both
+ *                  `DAEMONISE_KEEP_STDERR` and `DAEMONISE_CLOSE_STDERR`
+ *                  are set, or both `DAEMONISE_CLOSE_STDERR` and
+ *                  `DAEMONISE_KEEP_FDS` are set whilst `2` is
+ *                  in the list of file descriptor not to close.
  * @throws          Any error specified for signal(3).
  * @throws          Any error specified for sigemptyset(3).
  * @throws          Any error specified for sigprocmask(3).
  * @throws          Any error specified for chdir(3).
  * @throws          Any error specified for pipe(3).
+ * @throws          Any error specified for dup(3).
  * @throws          Any error specified for dup2(3).
  * @throws          Any error specified for fork(3).
  * @throws          Any error specified for setsid(3).
  * @throws          Any error specified for open(3).
+ * @throws          Any error specified for malloc(3).
  * 
  * @since  Always.
  */
-int daemonise(const char* name, int flags);
+int daemonise(const char* name, int flags, ...);
 
 
 /**

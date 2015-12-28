@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <assert.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
 
@@ -43,6 +45,42 @@ extern char** environ;
  * The pidfile created by `daemonise`.
  */
 static char* __pidfile = NULL;
+
+
+
+/**
+ * Wrapper for `dup` create a new file descriptor
+ * with a number not less than 3.
+ * 
+ * @param   old  The file descriptor to duplicate.
+ * @return       The new file descriptor, -1 on error.
+ * 
+ * @throws  Any error specified for dup(3).
+ */
+static int dup_at_least_3(int old)
+{
+  int intermediary[] = { -1, -1, -1 };
+  int i = 0, saved_errno;
+  
+  do
+    {
+      if (old = dup(old), old == -1)
+	goto fail;
+      assert(i < 3);
+      if (i >= 3)
+	abort();
+      intermediary[i++] = old;
+    }
+  while (old < 3);
+  
+ fail:
+  saved_errno = errno;
+  if (intermediary[0] >= 0)  close(intermediary[0]);
+  if (intermediary[1] >= 0)  close(intermediary[1]);
+  if (intermediary[2] >= 0)  close(intermediary[2]);
+  errno = saved_errno;
+  return old;
+}
 
 
 
@@ -127,25 +165,40 @@ static char* __pidfile = NULL;
  *                 -  `DAEMONISE_CLOSE_STDERR`
  *                 -  `DAEMONISE_KEEP_STDIN`
  *                 -  `DAEMONISE_KEEP_STDOUT`
+ *                 -  `DAEMONISE_KEEP_FDS`
+ * @parma   ...    Enabled if `DAEMONISE_KEEP_FDS` is used,
+ *                 do not add anything if `DAEMONISE_KEEP_FDS`
+ *                 is unused. This is a `-1`-terminated list
+ *                 of file descritors to keep open. 0, 1, and 2
+ *                 are implied by `DAEMONISE_KEEP_STDIN`,
+ *                 `DAEMONISE_KEEP_STDOUT`, and `DAEMONISE_KEEP_STDERR`,
+ *                 respectively. All arguments are of type `int`.
  * @return         Zero on success, -1 on error.
  * 
  * @throws  EEXIST  The PID file already exists on the system.
  *                  Unless your daemon supervisor removs old
  *                  PID files, this could mean that the daemon
  *                  has exited without removing the PID file.
+ * @throws  EINVAL  `flags` contains an unsupported bit, both
+ *                  `DAEMONISE_KEEP_STDERR` and `DAEMONISE_CLOSE_STDERR`
+ *                  are set, or both `DAEMONISE_CLOSE_STDERR` and
+ *                  `DAEMONISE_KEEP_FDS` are set whilst `2` is
+ *                  in the list of file descriptor not to close,
  * @throws          Any error specified for signal(3).
  * @throws          Any error specified for sigemptyset(3).
  * @throws          Any error specified for sigprocmask(3).
  * @throws          Any error specified for chdir(3).
  * @throws          Any error specified for pipe(3).
+ * @throws          Any error specified for dup(3).
  * @throws          Any error specified for dup2(3).
  * @throws          Any error specified for fork(3).
  * @throws          Any error specified for setsid(3).
  * @throws          Any error specified for open(3).
+ * @throws          Any error specified for malloc(3).
  * 
  * @since  Always.
  */
-int daemonise(const char* name, int flags)
+int daemonise(const char* name, int flags, ...)
 {
 #define t(...)  do { if (__VA_ARGS__) goto fail; }  while (0)
   
@@ -156,17 +209,51 @@ int daemonise(const char* name, int flags)
   char** w;
   char* run;
   int i, closeerr, fd = -1;
+  char* keep = NULL;
+  int keepmax = 0;
   pid_t pid;
+  va_list args;
   int saved_errno;
   
   
   /* Validate flags. */
-  if (flags & ~1023)
+  if (flags & ~2047)
     return errno = EINVAL, -1;
   if (flags & DAEMONISE_KEEP_STDERR)
     if (flags & DAEMONISE_CLOSE_STDERR)
       return errno = EINVAL, -1;
   
+  
+  /* Find out which file descriptors not too close. */
+  if ((flags & DAEMONISE_KEEP_FDS) == 0)
+    {
+      va_start(args, flags);
+      while (va_arg(args, int) >= 0)
+	if ((fd > 2) && (keepmax < fd))
+	  keepmax = fd;
+      va_end(args);
+      keep = calloc(keepmax + 1, sizeof(char));
+      t (keep == NULL);
+      va_start(args, flags);
+      while ((fd = va_arg(args, int)) >= 0)
+	switch (fd)
+	  {
+	  case 0:  flags |= DAEMONISE_KEEP_STDIN;   break;
+	  case 1:  flags |= DAEMONISE_KEEP_STDOUT;  break;
+	  case 2:  flags |= DAEMONISE_KEEP_STDERR;
+	    if (flags & DAEMONISE_CLOSE_STDERR)
+	      return free(keep), errno = EINVAL, -1;
+	    break;
+	  default:
+	    keep[fd] = 1;
+	    break;
+	  }
+      va_end(args);
+      fd = -1;
+    }
+  /* We assume that the maximum file descriptor is not extremely large.
+   * We also assume the number of file descriptors too keep is very small,
+   * but this does not affect us. */
   
   /* Close all files except stdin, stdout, and stderr. */
   if ((flags & DAEMONISE_NO_CLOSE) == 0)
@@ -176,8 +263,10 @@ int daemonise(const char* name, int flags)
       for (i = 3; (rlim_t)i < rlimit.rlim_cur; i++)
 	/* File descriptors with numbers above and including
 	 * `rlimit.rlim_cur` cannot be created. They cause EBADF. */
-	close(i);
+	if ((keep == NULL) || (keep[i] == 0))
+	  close(i);
     }
+  free(keep), keep = NULL;
   
   /* Reset all signal handlers. */
   if ((flags & DAEMONISE_NO_SIG_DFL) == 0)
@@ -210,12 +299,12 @@ int daemonise(const char* name, int flags)
   /* Create a channel for letting the original process know when to exit. */
   if (pipe(pipe_rw))
     t ((pipe_rw[0] = pipe_rw[1] = -1));
-  t (dup2(pipe_rw[0], 10) == -1);
+  t (fd = dup_at_least_3(pipe_rw[0]), fd == -1);
   close(pipe_rw[0]);
-  pipe_rw[0] = 10;
-  t (dup2(pipe_rw[1], 11) == -1);
+  pipe_rw[0] = fd;
+  t (fd = dup_at_least_3(pipe_rw[1]), fd == -1);
   close(pipe_rw[1]);
-  pipe_rw[1] = 11;
+  pipe_rw[1] = fd;
   
   /* Become a background process. */
   t (pid = fork(), pid == -1);
@@ -294,6 +383,7 @@ int daemonise(const char* name, int flags)
   if (pipe_rw[0] >= 0)  close(pipe_rw[0]);
   if (pipe_rw[1] >= 0)  close(pipe_rw[1]);
   if (fd         >= 0)  close(fd);
+  free(keep);
   errno = saved_errno;
   return -1;
 }
