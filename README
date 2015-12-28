@@ -1,5 +1,5 @@
 NAME
-	sat - A simple incompatibility implementation of at(1).
+	sat - A simple incompatible implementation of at(1).
 
 DESCRIPTION
 	sat is a simple implementation of at(1). But is not compatible
