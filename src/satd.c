@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pwd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -151,6 +152,45 @@ try_next:
 
 
 /**
+ * Duplicate a file descriptor, and
+ * open /dev/null to the old file descriptor.
+ * However, if `old` is 3 or greater, it will
+ * be closed rather than /dev/null.
+ * 
+ * @param   old  The old file descriptor.
+ * @param   new  The new file descriptor.
+ * @return       `new`, -1 on error.
+ */
+static int
+dup2_and_null(int old, int new)
+{
+	int want, fd = -1;
+	int saved_errno;
+
+	if (old != new) {
+		t (dup2(old, new) == -1);
+		close(old), want = old;
+		if (want < 3) {
+			fd = open("/dev/null", O_RDWR);
+			t (fd == -1);
+			if (fd != want) {
+				t (dup2(fd, want) == -1);
+				close(fd), fd = -1;
+			}
+		}
+	}
+
+	return new;
+fail:
+	saved_errno = errno;
+	if (fd >= 0)
+		close(fd);
+	errno = saved_errno;
+	return -1;
+}
+
+
+/**
  * The sat daemon initialisation.
  * 
  * @param   argc  Any value in [0, 2] is accepted.
@@ -164,9 +204,11 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_un address;
-	int sock = -1, foreground = 0, fd = -1;
+	int sock = -1, state = -1, foreground = 0;
 	struct stat attr;
-	char *path;
+	char *path = NULL;
+	char *dir;
+	ssize_t len;
 
 	/* Parse command line. */
 	if (argc > 0)  argv0 = argv[0];
@@ -188,25 +230,29 @@ main(int argc, char *argv[])
 		t (setenv("SAT_HOOK_PATH", path, 1));
 		if (!do_not_free)
 			free(path);
+		path = NULL;
 	}
+
+	/* Open/create state file. */
+	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
+	t (snprintf(NULL, 0, "%s/satd.state%zn", dir, &len) == -1);
+	path = malloc(((size_t)len + 1) * sizeof(char));
+	t (!path);
+	sprintf(path, "%s/satd.state", dir);
+	state = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRWXU);
+	t (state == -1);
+	free(path), path = NULL;
+
+	/* The state fill shall be on fd 4. */
+	t (dup2_and_null(state, 4) == -1);
+	state = 4;
 
 	/* Create socket. */
 	t (sock = create_socket(&address), sock == -1);
 
-	/* Socket shall be on fd 3, and all below shall be /dev/null. */
-	if (sock != 3) {
-		int want;
-		t (dup2(sock, 3) == -1);
-		close(sock), want = sock, sock = 3;
-		if (want < 3) {
-			fd = open("/dev/null", O_RDWR);
-			t (fd == -1);
-			if (fd != want) {
-				t (dup2(fd, want) == -1);
-				close(fd), fd = -1;
-			}
-		}
-	}
+	/* Socket shall be on fd 3. */
+	t (dup2_and_null(sock, 3) == -1);
+	sock = 3;
 
 	/* Listen for incoming conections. */
 #if SOMAXCONN < SATD_BACKLOG
@@ -225,13 +271,13 @@ main(int argc, char *argv[])
 fail:
 	if (errno)
 		perror(argv0);
+	free(path);
 	if (sock >= 0) {
 		close(sock);
 		unlink(address.sun_path);
 	}
-	if (fd >= 0) {
-		close(fd);
-	}
+	if (state >= 0)
+		close(state);
 	undaemonise();
 	return 1;
 }

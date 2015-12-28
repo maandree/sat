@@ -29,6 +29,11 @@
  */
 #define SOCK_FILENO  3
 
+/**
+ * The file descriptor for the state file.
+ */
+#define STATE_FILENO  4
+
 
 /**
  * Command: queue a job.
@@ -55,9 +60,10 @@
 /**
  * The sat daemon.
  * 
- * @param   argc  Should be 3.
+ * @param   argc  Should be 4
  * @param   argv  The name of the process, the pathname of the socket,
- *                and $SAT_HOOK_PATH (the pathname of the hook-script.)
+ *                the pathname to the state file, and $SAT_HOOK_PATH
+ *                (the pathname of the hook-script.)
  * @return  0     The process was successful.
  * @return  1     The process failed queuing the job.
  */
@@ -72,6 +78,7 @@ main(int argc, char *argv[])
 
 	close(SOCK_FILENO);
 	unlink(argv[1]);
+	unlink(argv[2]); /* Only on success! */
 	return 0;
 	(void) argc;
 }
