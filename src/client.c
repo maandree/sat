@@ -45,7 +45,7 @@ extern char *argv0;
 int
 send_command(enum command cmd, size_t n, const char *restrict msg)
 {
-	return 0 /* TODO */
+	return 0; /* TODO */
 }
 
 

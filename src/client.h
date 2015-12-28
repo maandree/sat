@@ -71,7 +71,7 @@ int send_command(enum command cmd, size_t n, const char *restrict msg);
  * @param   array  The string array.
  * @return         The number of bytes required to store the array.
  */
-size_t measure_array(char *array[])
+size_t measure_array(char *array[]);
 
 /**
  * Store a string array.

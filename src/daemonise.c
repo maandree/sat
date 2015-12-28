@@ -21,12 +21,15 @@
  * 
  * This file is copied from <http://github.com/maandree/slibc>.
  */
+#include "daemonise.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include <sys/resource.h>
 
 
@@ -149,10 +152,11 @@ int daemonise(const char* name, int flags)
   struct rlimit rlimit;
   int pipe_rw[2] = { -1, -1 };
   sigset_t set;
-  char* r;
-  char* w;
+  char** r;
+  char** w;
   char* run;
   int i, closeerr, fd = -1;
+  pid_t pid;
   int saved_errno;
   
   
@@ -217,7 +221,7 @@ int daemonise(const char* name, int flags)
   t (pid = fork(), pid == -1);
   close(pipe_rw[!!pid]), pipe_rw[!!pid] = 1;
   if (pid)
-    exit(read(pipe_rw[0], &b, (size_t)1) <= 0);
+    exit(read(pipe_rw[0], &fd, (size_t)1) <= 0);
   
   /* Temporarily become session leader. */
   t (setsid() == -1);
@@ -233,26 +237,26 @@ int daemonise(const char* name, int flags)
   run = getenv("XDG_RUNTIME_DIR");
   if (run && *run)
     {
-      pidpath = malloc(sizeof("/.pid") + (strlen(run) + strlen(name)) * sizeof(char));
-      t (pidfile == NULL);
-      stpcpy(stpcpy(stpcpy(stpcpy(pidpath, run), "/"), name), ".pid");
+      __pidfile = malloc(sizeof("/.pid") + (strlen(run) + strlen(name)) * sizeof(char));
+      t (__pidfile == NULL);
+      stpcpy(stpcpy(stpcpy(stpcpy(__pidfile, run), "/"), name), ".pid");
     }
   else
     {
-      pidpath = malloc(sizeof("/run/.pid") + strlen(name) * sizeof(char));
-      t (pidfile == NULL);
-      stpcpy(stpcpy(stpcpy(pidpath, "/run/"), name), ".pid");
+      __pidfile = malloc(sizeof("/run/.pid") + strlen(name) * sizeof(char));
+      t (__pidfile == NULL);
+      stpcpy(stpcpy(stpcpy(__pidfile, "/run/"), name), ".pid");
     }
-  fd = open(pidpath, O_WRONLY | O_CREAT | O_EXCL, 0644);
+  fd = open(__pidfile, O_WRONLY | O_CREAT | O_EXCL, 0644);
   if (fd == -1)
     {
       saved_errno = errno;
-      free(pidpath), pidpath = NULL;
+      free(__pidfile), __pidfile = NULL;
       errno = saved_errno;
       goto fail;
     }
   pid = getpid();
-  t (dprintf(fd, "%lli\n", (long long int)pid)) < 0;
+  t (dprintf(fd, "%lli\n", (long long int)pid) < 0);
   t (close(fd) && (errno != EINTR));
  no_pid_file:
   
@@ -275,7 +279,7 @@ int daemonise(const char* name, int flags)
   fd = -1;
   
   /* We are done! Let the original process exit. */
-  if ((write(pipe_rw[1], &b, (size_t)1) <= 0) ||
+  if ((write(pipe_rw[1], &fd, (size_t)1) <= 0) ||
       (close(pipe_rw[1]) && (errno != EINTR)))
     {
       if (flags & DAEMONISE_KEEP_STDERR)
@@ -313,11 +317,11 @@ int daemonise(const char* name, int flags)
 int undaemonise(void)
 {
   int r, saved_errno;
-  if (pidfile == NULL)
+  if (__pidfile == NULL)
     return 0;
-  r = unlink(pidfile);
+  r = unlink(__pidfile);
   saved_errno = errno;
-  free(pidfile), pidfile = NULL;
+  free(__pidfile), __pidfile = NULL;
   errno = saved_errno;
   return r;
 }

@@ -19,33 +19,17 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
 
 #include "parse_time.h"
 #include "client.h"
+#include "common.h"
 
 
 
-/**
- * The name of the process.
- */
-char *argv0 = "sat";
+COMMAND("sat")
+USAGE("TIME COMMAND...")
 
-
-
-/**
- * Print usage information.
- */
-static void
-usage(void)
-{
-	fprintf(stderr, "usage: %s TIME COMMAND...\n",
-	        strrchr(argv0) ? (strrchr(argv0) + 1) : argv0);
-	exit(2);
-}
 
 
 /**
@@ -70,14 +54,13 @@ main(int argc, char *argv[], char *envp[])
 	struct timespec ts;
 	clockid_t clk;
 	char *msg = NULL;
-	char *w;
-	char *r;
+	char **w;
+	char **r;
 	int removed_empty = 0;
 	size_t n;
 
-	if ((argc < 3) || (argv[1][0] == '-')) {
+	if ((argc < 3) || (argv[1][0] == '-'))
 		usage();
-	}
 
 	argv0 = argv[0];
 
@@ -87,17 +70,17 @@ main(int argc, char *argv[], char *envp[])
 		case EINVAL:
 			fprintf(stderr,
 			        "%s: time parameter cound not be parsed, perhaps you "
-			        "you need an external parser: %s\n", argv0, str);
+			        "you need an external parser: %s\n", argv0, argv[1]);
 			return 2;
 		case ERANGE:
 			fprintf(stderr,
 			        "%s: the specified time is beyond the limit of what "
-				"can be represented by `struct timespec`: %s\n", argv0, str);
+				"can be represented by `struct timespec`: %s\n", argv0, argv[1]);
 			return 2;
 		case EDOM:
 			fprintf(stderr,
 			        "%s: the specified time is in past, and more than "
-				"a day ago: %s\n", argv0, str);
+				"a day ago: %s\n", argv0, argv[1]);
 			return 2;
 		default:
 			goto fail;
@@ -108,7 +91,7 @@ main(int argc, char *argv[], char *envp[])
 	argv += 2;
 
 	/* Remove empty environment entries */
-	for (w = r = envp; *r; *r++) {
+	for (w = r = envp; *r; r++) {
 		if (**r) {
 			*w++ = *r;
 		} else if (removed_empty == 0) {
@@ -121,24 +104,14 @@ main(int argc, char *argv[], char *envp[])
 
 	/* Construct message to send to the daemon. */
 	n = measure_array(argv) + measure_array(envp);
-	if (!(msg = malloc(n + sizeof(clk) + sizeof(ts))))
-		goto fail;
+	t (!(msg = malloc(n + sizeof(clk) + sizeof(ts))));
 	store_array(store_array(msg, argv), envp);
-	memcpy(msg + n, clk, sizeof(clk)), n += sizeof(clk);
-	memcpy(msg + n, ts,  sizeof(ts)),  n += sizeof(ts);
+	memcpy(msg + n, &clk, sizeof(clk)), n += sizeof(clk);
+	memcpy(msg + n, &ts,  sizeof(ts)),  n += sizeof(ts);
 
 	/* Send job to daemon, start daemon if necessary. */
-	if (send_command(SAT_QUEUE, n, msg)) {
-		if (errno)
-			goto fail;
-		free(msg);
-		return 3;
-	}
-	return 0;
+	SEND(SAT_QUEUE, n, msg);
 
-fail:
-	perror(argv0);
-	free(msg);
-	return 1;
+	END(msg);
 }
 

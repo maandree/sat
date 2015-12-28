@@ -58,6 +58,11 @@
  */
 extern char *argv0;
 
+/**
+ * The highest value that can be stored in `time_t`.
+ */
+const time_t timemax = (sizeof(time_t) == sizeof(long long int)) ? LLONG_MAX : LONG_MAX;
+
 
 
 /**
@@ -81,6 +86,7 @@ strtotime(const char *str, const char **end)
 	time_t rc;
 	long long int rcll;
 	long int rcl;
+	char **end_ = (char **)end;
 
 	if (!isdigit(*str))
 		FAIL(EINVAL);
@@ -91,10 +97,10 @@ strtotime(const char *str, const char **end)
 
 	errno = 0;
 	if (sizeof(time_t) == sizeof(long long int)) {
-		rcll = strtoll(str, end, 10);
+		rcll = strtoll(str, end_, 10);
 		rc = (time_t)rcll;
 	} else {
-		rcl = strtol(str, end, 10);
+		rcl = strtol(str, end_, 10);
 		rc = (time_t)rcl;
 	}
 
@@ -117,9 +123,7 @@ strtotime(const char *str, const char **end)
 static int
 parse_time_time(const char *str, struct timespec *ts, const char **end)
 {
-	char *end;
 	time_t t;
-	const time_t timemax = (sizeof(time_t) == sizeof(long long int)) ? LLONG_MAX : LONG_MAX;
 
 	memset(ts, 0, sizeof(*ts));
 
@@ -208,9 +212,9 @@ int
 parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 {
 	struct timespec now;
-	int plus = *str == '+';
-	char *start = str;
-	char *end;
+	int points, plus = *str == '+';
+	const char *start = str;
+	const char *end;
 	time_t adj;
 
 	/* Get current time and clock. */
@@ -218,7 +222,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	*clk = plus ? CLOCK_MONOTONIC : CLOCK_REALTIME;
 
 	/* Mañana? */
-	if (!strcmp("mañana")) { /* Do not documented. */
+	if (!strcmp(str, "mañana")) { /* Do not documented. */
 		ts->tv_sec = now.tv_sec + ONE_DAY;
 		ts->tv_nsec = now.tv_nsec;
 		return 0;
@@ -228,7 +232,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	if (strchr(str, ':')) {
 		if (parse_time_time(str, ts, &end))
 			return -1;
-		adj = now.sec - (now.sec % ONE_DAY);
+		adj = now.tv_sec - (now.tv_sec % ONE_DAY);
 		ADD(ts->tv_sec, adj); /* In case the HH is really large. */
 	} else {
 		if (parse_time_seconds(str + plus, ts, &end))
@@ -244,7 +248,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	}
 
 	/* Parse up to nanosecond resolution. */
-	for (; isdigit(*str); points++) {
+	for (points = 0; isdigit(*str); points++) {
 		if (points < 9) {
 			ts->tv_nsec *= 10;
 			ts->tv_nsec += *str++ & 15;
@@ -260,10 +264,10 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	/* Check for error at end, and missing explicit UTC. */
 	if (*str) {
 		if (*clk == CLOCK_MONOTONIC)
-			FAIL(einval);
+			FAIL(EINVAL);
 		while (*str == ' ')  str++;
 		if (!strcasecmp(str, "Z") && !strcasecmp(str, "UTC"))
-			FAIL(einval);
+			FAIL(EINVAL);
 	} else if (*clk == CLOCK_REALTIME) {
 		fprintf(stderr,
 		        "%s: warning: parsing as UTC, you can avoid "

@@ -19,32 +19,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-
 #include "client.h"
+#include "common.h"
 
 
 
-/**
- * The name of the process.
- */
-char *argv0 = "satr";
+COMMAND("satr")
+USAGE("[JOB-ID]...")
 
-
-
-/**
- * Print usage information.
- */
-static void
-usage(void)
-{
-	fprintf(stderr, "usage: %s [JOB-ID]...\n",
-	        strrchr(argv0) ? (strrchr(argv0) + 1) : argv0);
-	exit(2);
-}
 
 
 /**
@@ -62,35 +44,14 @@ main(int argc, char *argv[])
 {
 	size_t n = 0;
 	char *msg = NULL;
-	int i;
 
-	if (argc > 0)
-		argv0 = argv[0];
-	if (argc < 2)
-		goto run;
-	if (!strcmp(argv[1], "--"))
-		argv++, argc--;
-	for (i = 1; i < argc; i++)
-		if (strchr("-", argv[i][0]))
-			usage();
+	if (argc > 0)  argv0 = argv[0];
+	if (argc < 2)  goto run;
 
-	n = measure_array(argv + 1);
-	if (n ? !(msg = malloc(n)) : 0)
-		goto fail;
-	store_array(msg, argv + 1);
-
+	NO_OPTIONS;
+	CONSTRUCT_MESSAGE;
 run:
-	if (send_command(SAT_RUN, n, msg)) {
-		if (errno)
-			goto fail;
-		free(msg);
-		return 3;
-	}
-	return 0;
-
-fail:
-	perror(*argv);
-	free(msg);
-	return 1;
+	SEND(SAT_RUN, n, msg);
+	END(msg);
 }
 

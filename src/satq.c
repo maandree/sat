@@ -19,31 +19,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-
 #include "client.h"
+#include "common.h"
 
 
 
-/**
- * The name of the process.
- */
-char *argv0 = "satq";
+COMMAND("satq")
+USAGE(NULL)
 
-
-
-/**
- * Print usage information.
- */
-static void
-usage(void)
-{
-	fprintf(stderr, "usage: %s\n",
-	        strrchr(argv0) ? (strrchr(argv0) + 1) : argv0);
-	exit(2);
-}
 
 
 /**
@@ -62,8 +45,7 @@ main(int argc, char *argv[])
 	if (argc > 0)  argv0 = argv[0];
 	if (argc > 1)  usage();
 
-	if (send_command(SAT_PRINT, 0, NULL))
-		return errno ? (perror(argv0), 1) : 3;
-	return 0;
+	SEND(SAT_PRINT, 0, NULL));
+	END(NULL);
 }
 
