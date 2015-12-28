@@ -20,6 +20,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 
 
@@ -70,17 +73,72 @@
 int
 main(int argc, char *argv[])
 {
-	int fd;
+	int fd = -1, rc = 0;
+	pid_t pid;
+	char type;
+	const char *image;
 
-	fd = accept(SOCK_FILENO. NULL, NULL);
-	shutdown(fd, SHUT_RDWR);
-	close(fd);
+accept_again:
+	fd = accept(SOCK_FILENO, NULL, NULL);
+	if (fd == -1) {
+		switch (errno) {
+		case ECONNABORTED:
+		case EINTR:
+			goto accept_again;
+		default:
+			/* Including EMFILE, ENFILE, and ENOMEM
+			 * because of potential resource leak. */
+			goto fail;
+		}
+	}
+fork_again:
+	if (recv(fd, &type, (size_t)1, 0) <= 0) {
+		perror(argv[0]);
+		goto connection_done;
+	}
+	switch ((pid = fork())) {
+	case -1:
+		if (errno != EAGAIN)
+			goto fail;
+		(void) sleep(1); /* Possibly shorter because of SIGCHLD. */
+		goto fork_again;
+	case 0:
+		switch (type) {
+		case SAT_QUEUE:   image = LIBEXEC "/" PACKAGE "/satd-add";   break;
+		case SAT_REMOVE:  image = LIBEXEC "/" PACKAGE "/satd-rm";    break;
+		case SAT_PRINT:   image = LIBEXEC "/" PACKAGE "/satd-list";  break;
+		case SAT_RUN:     image = LIBEXEC "/" PACKAGE "/satd-run";   break;
+		default:
+			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
+			exit(1);
+		}
+		if (dup2(fd, SOCK_FILENO) != -1)
+			close(fd), fd = SOCK_FILENO, execv(image, argv);
+		perror(argv[0]);
+		close(fd);
+		exit(1);
+	default:
+		break;
+	}
+connection_done:
+	close(fd), fd = -1;
+	goto accept_again;
 
+done:
 	unlink(argv[1]);
-	unlink(argv[2]); /* Only on success! */
+	if (!rc)
+		unlink(argv[2]);
 	close(SOCK_FILENO);
 	close(STATE_FILENO);
 	return 0;
+
+fail:
+	perror(argv[0]);
+	if (fd >= 0)
+		close(fd);
+	rc = 1;
+	goto done;
+
 	(void) argc;
 }
 

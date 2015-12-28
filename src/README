@@ -4,7 +4,11 @@ satr.c   The satr program, ask satd to run jobs early.
 satrm.c  The satrm program, ask satd to remove jobs from the queue.
 
 satd.c             The initialisation part of satd.
-satd-diminished.c  The rest of satd, std.c exec:s to this.
+satd-diminished.c  The rest of satd, satd.c exec:s to this.
+satd-add.c         The part of satd responding to sat, satd-diminished.c fork–exec:s to this.
+satd-rm.c          The part of satd responding to satrm, satd-diminished.c fork–exec:s to this.
+satd-list.c        The part of satd responding to satlist, satd-diminished.c fork–exec:s to this.
+satd-run.c         The part of satd responding to satr, satd-diminished.c fork–exec:s to this.
 
 parse_time.[ch]    Use by sat.c to parse the time argument.
                    Only rudimentary parsing is done.
