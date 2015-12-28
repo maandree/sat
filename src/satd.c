@@ -263,6 +263,8 @@ main(int argc, char *argv[])
 
 	/* Daemonise. */
 	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS, sock, -1));
+	if (foreground)
+		close(5); /* Required to be closed by the next image. */
 
 	/* Change to a process image without all this initialisation text. */
 	execl(LIBEXEC "/" PACKAGE "/satd-diminished", argv0,

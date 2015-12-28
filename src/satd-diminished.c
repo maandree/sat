@@ -37,6 +37,11 @@
  */
 #define STATE_FILENO  4
 
+/**
+ * The file descriptor for connection to the current client.
+ */
+#define CONN_FILENO  5
+
 
 /**
  * Command: queue a job.
@@ -77,6 +82,13 @@ main(int argc, char *argv[])
 	pid_t pid;
 	char type;
 	const char *image;
+	struct stat _attr;
+
+	/* Pick-up where we left off. */
+	if (!fstat(CONN_FILENO, _attr)) {
+		fd = CONN_FILENO;
+		goto fork_again;
+	}
 
 accept_again:
 	fd = accept(SOCK_FILENO, NULL, NULL);
@@ -90,6 +102,11 @@ accept_again:
 			 * because of potential resource leak. */
 			goto fail;
 		}
+	}
+	if (fd != CONN_FILENO) {
+		if (dup2(fd, CONN_FILENO) == -1)
+			goto fail;
+		close(fd), fd = CONN_FILENO;
 	}
 fork_again:
 	if (recv(fd, &type, (size_t)1, MSG_PEEK /* Just peek in case we fail! */) <= 0) {
