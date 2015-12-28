@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/file.h>
 
 #include "daemonise.h"
 #include "common.h"
@@ -58,19 +59,40 @@ create_socket(struct sockaddr_un *address)
 	char *dir;
 	int saved_errno;
 
+	/* Get scoket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
 	t (snprintf(NULL, 0, "%s/satd.socket%zn", dir, &len) == -1);
 	if ((len < 0) || ((size_t)len >= sizeof(address->sun_path)))
 		t ((errno = ENAMETOOLONG));
 	sprintf(address->sun_path, "%s/satd.socket", dir);
 	address->sun_family = AF_UNIX;
-	/* TODO test flock */
+
+	/* Check that no living process owns the socket. */
+	fd = open(address->sun_path, O_RDONLY);
+	if (fd == -1) {
+		t (errno != ENOENT);
+		goto does_not_exist;
+	} else {
+		if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
+			t (errno != EWOULDBLOCK);
+			fprintf(stderr, "%s: the daemon's socket file is already in use.\n", argv0);
+			errno = 0;
+			goto fail;
+		}
+		flock(fd, LOCK_UN);
+		close(fd), fd = -1;
+	}
+
+	/* Create socket. */
 	unlink(address->sun_path);
+does_not_exist:
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
 	t (fchmod(fd, S_IRWXU) == -1);
 	t (fchown(fd, getuid(), getgid()) == -1);
 	t (bind(fd, (struct sockaddr *)address, sizeof(*address)) == -1);
-	/* TODO flock */
+
+	/* Mark the socket as owned by a living process. */
+	t (flock(fd, LOCK_SH));
 
 	return fd;
 fail:
@@ -98,21 +120,25 @@ main(int argc, char *argv[])
 	struct sockaddr_un address;
 	int sock = -1, foreground = 0;
 
+	/* Parse command line. */
 	if (argc > 0)  argv0 = argv[0];
 	if (argc > 2)  usage();
 	if (argc == 2)
 		if (!(foreground = !strcmp(argv[1], "-f")))
 			usage();
 
+	/* Daemonise. */
 	t (foreground ? 0 : daemonise("satd", 0));
 
+	/* Create socket. */
 	t (sock = create_socket(&address), sock == -1);
 	if (sock != 3) {
 		t (dup2(sock, 3) == -1);
 		close(sock), sock = 3;
 	}
 
-#ifdef SOMAXCONN < SATD_BACKLOG
+	/* Listen for incoming conections. */
+#if SOMAXCONN < SATD_BACKLOG
 	t (listen(sock, SOMAXCONN));
 #else
 	t (listen(sock, SATD_BACKLOG));
@@ -124,7 +150,8 @@ main(int argc, char *argv[])
 	return 0;
 
 fail:
-	perror(argv0);
+	if (errno)
+		perror(argv0);
 	if (sock >= 0) {
 		close(sock);
 		unlink(address.sun_path);

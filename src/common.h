@@ -48,7 +48,7 @@ usage(void)  \
 {  \
 	fprintf(stderr, "usage: %s%s%s\n",  \
 	        strrchr(argv0, '/') ? (strrchr(argv0, '/') + 1) : argv0,  \
-	        (synopsis) ? " " : "", synopsis ? synopsis : "");  \
+	        synopsis ? " " : "", synopsis ? synopsis : "");  \
 	exit(2);  \
 }
 
@@ -68,12 +68,14 @@ char *argv0 = name;
  * that is an option.
  */
 #define NO_OPTIONS  \
-	int i;
+do {  \
+	int i;  \
 	if (!strcmp(argv[1], "--"))  \
 		argv++, argc--;  \
 	for (i = 1; i < argc; i++)  \
 		if (strchr("-", argv[i][0]))  \
-			usage()
+			usage();  \
+} while (0)
 
 
 /**
@@ -100,7 +102,7 @@ do {  \
 		t (errno);  \
 		free(msg);  \
 		return 3;  \
-	}
+	}  \
 } while (0)
 
 
