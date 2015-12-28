@@ -54,7 +54,7 @@ USAGE("[-f]")
 static int
 create_socket(struct sockaddr_un *address)
 {
-	int fd = -1;
+	int fd = -1, bound = 0;
 	ssize_t len;
 	char *dir;
 	int saved_errno;
@@ -91,6 +91,7 @@ does_not_exist:
 	t (fchown(fd, getuid(), getgid()) == -1);
 	t (bind(fd, (struct sockaddr *)address, sizeof(*address)) == -1);
 	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
+	bound = 1;
 
 	/* Mark the socket as owned by a living process. */
 	t (flock(fd, LOCK_SH));
@@ -100,6 +101,8 @@ fail:
 	saved_errno = errno;
 	if (fd >= 0)
 		close(fd);
+	if (bound)
+		unlink(address->sun_path);
 	errno = saved_errno;
 	return -1;
 }
