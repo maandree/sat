@@ -39,6 +39,8 @@ main(int argc, char *argv[])
 	size_t n = 0;
 	char *message = NULL;
 	char **msg_argv = NULL;
+	char **arg;
+	int rc = 0;
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || (n && message[n - 1]));
@@ -48,7 +50,27 @@ main(int argc, char *argv[])
 		t (!msg_argv);
 	}
 
-	return 0;
+	/* Perform action. */
+	if (msg_argv) {
+		for (arg = msg_argv; *arg; arg++)
+			t (remove_job(*arg, 1) && errno);
+	} else {
+		for (;;)
+			if (remove_job(NULL, 1))
+				t (errno);
+	}
+
+done:
+	/* Cleanup. */
+	shutdown(SOCK_FILENO, SHUT_WR);
+	close(SOCK_FILENO);
+	free(msg_argv);
+	free(message);
+	return rc;
 fail:
+	if (send_string(SOCK_FILENO, STDERR_FILENO, argv[0], ": ", strerror(errno), "\n", NULL))
+		perror(argv[0]);
+	rc = 1;
+	goto done;
 }
 

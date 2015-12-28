@@ -41,7 +41,7 @@
  * @throws  Any exception specified for realloc(3).
  */
 int
-readall(int fd, char **buf, size_t *n);
+readall(int fd, char **buf, size_t *n)
 {
 	char *buffer = NULL;
 	size_t ptr = 0;
@@ -54,7 +54,7 @@ readall(int fd, char **buf, size_t *n);
 		if (ptr == size) {
 			new = realloc(buffer, size <<= 1);
 			t (!new);
-			buffer = wnew;
+			buffer = new;
 		}
 		got = read(fd, buffer + ptr, size - ptr);
 		t (got < 0);
@@ -90,10 +90,9 @@ fail:
  * @throws  Any exception specified for realloc(3).
  */
 char **
-restore_array(char* buf, size_t len, size_t* n)
+restore_array(char *buf, size_t len, size_t *n)
 {
 	char **rc = malloc((len + 1) * sizeof(char*));
-	char *elem = NULL;
 	char **new;
 	size_t i, e = 0;
 	t (!rc);

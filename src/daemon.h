@@ -20,6 +20,10 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include <stddef.h>
+#include <errno.h>
+#include <string.h>
+#include <time.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 
 
@@ -35,6 +39,27 @@
 #define STATE_FILENO  4
 
 
+/**
+ * Command: queue a job.
+ */
+#define SAT_QUEUE  0
+
+/**
+ * Command: remove jobs.
+ */
+#define SAT_REMOVE  1
+
+/**
+ * Command: print job queue.
+ */
+#define SAT_PRINT  2
+
+/**
+ * Command: run jobs.
+ */
+#define SAT_RUN  3
+
+
 
 #ifndef t
 /**
@@ -44,6 +69,43 @@
  */
 # define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
 #endif
+
+
+
+/**
+ * A queued job.
+ */
+struct job {
+	/**
+	 * The job number.
+	 */
+	size_t no;
+
+	/**
+	 * The number of “argv” elements in `payload`.
+	 */
+	int argc;
+
+	/**
+	 * The clock in which `ts` is measured.
+	 */
+	clockid_t clk;
+
+	/**
+	 * The time when the job shall be executed.
+	 */
+	struct timespec ts;
+
+	/**
+	 * The number of bytes in `payload`.
+	 */
+	size_t n;
+
+	/**
+	 * “argv” followed by “envp”.
+	 */
+	char payload[0];
+};
 
 
 
@@ -75,7 +137,7 @@ int readall(int fd, char **buf, size_t *n);
  * 
  * @throws  Any exception specified for realloc(3).
  */
-char **restore_array(char* buf, size_t len, size_t* n);
+char **restore_array(char *buf, size_t len, size_t *n);
 
 /**
  * Create `NULL`-terminate subcopy of an list,

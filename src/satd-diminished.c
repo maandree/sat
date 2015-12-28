@@ -32,28 +32,6 @@
 
 
 /**
- * Command: queue a job.
- */
-#define SAT_QUEUE  0
-
-/**
- * Command: remove jobs.
- */
-#define SAT_REMOVE  1
-
-/**
- * Command: print job queue.
- */
-#define SAT_PRINT  2
-
-/**
- * Command: run jobs.
- */
-#define SAT_RUN  3
-
-
-
-/**
  * The common beginning of for all daemon pathnames.
  */
 #define DAEMON_PREFIX  LIBEXEC "/" PACKAGE "/satd-"
