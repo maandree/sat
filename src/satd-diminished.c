@@ -67,17 +67,44 @@
 
 
 /**
+ * The common beginning of for all daemon pathnames.
+ */
+#define DAEMON_PREFIX  LIBEXEC "/" PACKAGE "/satd-"
+
+
+
+/**
+ * Signal that has been received, 0 if none.
+ */
+static volatile sig_atomic_to received_signo = 0;
+
+
+
+/**
+ * Invoked when a signal is received.
+ * 
+ * @param  int  The signal.
+ */
+static void sighander(int signo)
+{
+	received_signo = (sig_atomic_to)signo;
+}
+
+
+
+/**
  * The sat daemon.
  * 
  * @param   argc  Should be 4.
  * @param   argv  The name of the process, the pathname of the socket,
  *                the pathname to the state file, and $SAT_HOOK_PATH
  *                (the pathname of the hook-script.)
+ * @param   envp  The environment.
  * @return  0     The process was successful.
  * @return  1     The process failed queuing the job.
  */
 int
-main(int argc, char *argv[])
+main(int argc, char *argv[], char *envp[])
 {
 	int fd = -1, rc = 0;
 	pid_t pid;
@@ -85,7 +112,9 @@ main(int argc, char *argv[])
 	const char *image;
 	struct stat _attr;
 
-	/* TODO set up signal handlers. */
+	/* Set up signal handlers. */
+	if (signal(SIGHUP,  sighandler) == SIG_ERR)  goto fail;
+	if (signal(SIGCHLD, sighandler) == SIG_ERR)  goto fail;
 
 	/* Pick-up where we left off. */
 	if (!fstat(CONN_FILENO, &_attr)) {
@@ -97,6 +126,12 @@ main(int argc, char *argv[])
 
 	/* The magnificent loop. */
 accept_again:
+	while (waitpid(-1, NULL, WNOHANG) > 0);
+	if (received_signo == SIGHUP) {
+		execve(DAEMON_PREFIX "diminished", argv, envp);
+		perror(argv[0]);
+	}
+	received_signo = 0;
 	fd = accept(SOCK_FILENO, NULL, NULL);
 	if (fd == -1) {
 		switch (errno) {
@@ -128,16 +163,16 @@ fork_again:
 		goto fork_again;
 	case 0:
 		switch (type) {
-		case SAT_QUEUE:   image = LIBEXEC "/" PACKAGE "/satd-add";   break;
-		case SAT_REMOVE:  image = LIBEXEC "/" PACKAGE "/satd-rm";    break;
-		case SAT_PRINT:   image = LIBEXEC "/" PACKAGE "/satd-list";  break;
-		case SAT_RUN:     image = LIBEXEC "/" PACKAGE "/satd-run";   break;
+		case SAT_QUEUE:   image = DAEMON_PREFIX "add";   break;
+		case SAT_REMOVE:  image = DAEMON_PREFIX "rm";    break;
+		case SAT_PRINT:   image = DAEMON_PREFIX "list";  break;
+		case SAT_RUN:     image = DAEMON_PREFIX "run";   break;
 		default:
 			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
 			exit(1);
 		}
 		if (dup2(fd, SOCK_FILENO) != -1)
-			close(fd), fd = SOCK_FILENO, execv(image, argv);
+			close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
 		perror(argv[0]);
 		close(fd);
 		exit(1);
