@@ -60,7 +60,7 @@
 /**
  * The sat daemon.
  * 
- * @param   argc  Should be 4
+ * @param   argc  Should be 4.
  * @param   argv  The name of the process, the pathname of the socket,
  *                the pathname to the state file, and $SAT_HOOK_PATH
  *                (the pathname of the hook-script.)
