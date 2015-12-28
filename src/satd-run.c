@@ -58,7 +58,7 @@ main(int argc, char *argv[])
 		for (;;)
 			if (remove_job(NULL, 1))
 				t (errno);
-	}
+	} /* XXX when running, remember to use PATH from the job's envp */
 
 done:
 	/* Cleanup. */
