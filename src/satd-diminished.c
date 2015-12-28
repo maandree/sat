@@ -85,7 +85,7 @@ static volatile sig_atomic_to received_signo = 0;
  * 
  * @param  int  The signal.
  */
-static void sighander(int signo)
+static void sighandler(int signo)
 {
 	int saved_errno = errno;
 	switch (signo) {
