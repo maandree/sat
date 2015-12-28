@@ -88,6 +88,8 @@ main(int argc, char *argv[])
 	if (!fstat(CONN_FILENO, _attr)) {
 		fd = CONN_FILENO;
 		goto fork_again;
+	} else if (errno != EBADF) {
+		goto fail;
 	}
 
 accept_again:
