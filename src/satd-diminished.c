@@ -23,6 +23,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 
@@ -71,7 +73,7 @@
 /**
  * Signal that has been received, 0 if none.
  */
-static volatile sig_atomic_to received_signo = 0;
+static volatile sig_atomic_t received_signo = 0;
 
 
 
@@ -88,7 +90,7 @@ static void sighandler(int signo)
 		waitpid(-1, NULL, WNOHANG);
 		break;
 	default:
-		received_signo = (sig_atomic_to)signo;
+		received_signo = (sig_atomic_t)signo;
 		break;
 	}
 	errno = saved_errno;
