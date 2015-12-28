@@ -59,7 +59,7 @@ create_socket(struct sockaddr_un *address)
 	char *dir;
 	int saved_errno;
 
-	/* Get scoket address. */
+	/* Get socket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
 	t (snprintf(NULL, 0, "%s/satd.socket%zn", dir, &len) == -1);
 	if ((len < 0) || ((size_t)len >= sizeof(address->sun_path)))
@@ -140,6 +140,9 @@ main(int argc, char *argv[])
 		t (dup2(sock, 3) == -1);
 		close(sock), sock = 3;
 	}
+
+	/* Get hook-script pathname. */
+	/* TODO */
 
 	/* Listen for incoming conections. */
 #if SOMAXCONN < SATD_BACKLOG
