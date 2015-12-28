@@ -38,10 +38,10 @@ main(int argc, char *argv[])
 {
 	size_t n = 0;
 	char *message = NULL;
-	char **msg_argv = NULL;
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || n);
+	shutdown(SOCK_FILENO, SHUT_RD);
 
 	return 0;
 fail:

@@ -43,6 +43,7 @@ main(int argc, char *argv[])
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n));
+	shutdown(SOCK_FILENO, SHUT_RD);
 	t (n < sizeof(int) + sizeof(clk) + sizeof(ts));
 	n -= sizeof(int) + sizeof(clk) + sizeof(ts);
 	msg_argc = *(int *)(message + n);

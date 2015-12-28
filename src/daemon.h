@@ -20,6 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include <stddef.h>
+#include <sys/socket.h>
 
 
 

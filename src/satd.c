@@ -24,7 +24,6 @@
 #include <pwd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/file.h>
 
