@@ -26,28 +26,27 @@
 /**
  * Commands for `send_command`.
  */
-enum command
-  {
-    /**
-     * Queue a job.
-     */
-    SAT_QUEUE = 0,
+enum command {
+	/**
+	 * Queue a job.
+	 */
+	SAT_QUEUE = 0,
 
-    /**
-     * Remove jobs.
-     */
-    SAT_REMOVE = 1,
+	/**
+	 * Remove jobs.
+	 */
+	SAT_REMOVE = 1,
 
-    /**
-     * Print job queue.
-     */
-    SAT_PRINT = 2,
+	/**
+	 * Print job queue.
+	 */
+	SAT_PRINT = 2,
 
-    /**
-     * Run jobs
-     */
-    SAT_RUN = 3
-  };
+	/**
+	 * Run jobs.
+	 */
+	SAT_RUN = 3
+};
 
 
 

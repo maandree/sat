@@ -20,6 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include <unistd.h>
+#include <sys/socket.h>
 
 
 
@@ -27,6 +28,27 @@
  * The file descriptor for the socket.
  */
 #define SOCK_FILENO  3
+
+
+/**
+ * Command: queue a job.
+ */
+#define SAT_QUEUE  0
+
+/**
+ * Command: remove jobs.
+ */
+#define SAT_REMOVE  1
+
+/**
+ * Command: print job queue.
+ */
+#define SAT_PRINT  2
+
+/**
+ * Command: run jobs.
+ */
+#define SAT_RUN  3
 
 
 
@@ -42,6 +64,12 @@
 int
 main(int argc, char *argv[])
 {
+	int fd;
+
+	fd = accept(SOCK_FILENO. NULL, NULL);
+	shutdown(fd, SHUT_RDWR);
+	close(fd);
+
 	close(SOCK_FILENO);
 	unlink(argv[1]);
 	return 0;
