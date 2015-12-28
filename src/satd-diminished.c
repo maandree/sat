@@ -92,7 +92,7 @@ accept_again:
 		}
 	}
 fork_again:
-	if (recv(fd, &type, (size_t)1, 0) <= 0) {
+	if (recv(fd, &type, (size_t)1, MSG_PEEK /* Just peek in case we fail! */) <= 0) {
 		perror(argv[0]);
 		goto connection_done;
 	}
