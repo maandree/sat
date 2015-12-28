@@ -175,6 +175,21 @@ main(int argc, char *argv[])
 		if (!(foreground = !strcmp(argv[1], "-f")))
 			usage();
 
+	/* Get hook-script pathname. */
+	if (!getenv("SAT_HOOK_PATH")) {
+		int do_not_free = 0;
+		path = hookpath("XDG_CONFIG_HOME", "/sat/hook");
+		t (!path && errno);
+		path = path ? path : hookpath("HOME", "/.config/sat/hook");
+		t (!path && errno);
+		path = path ? path : hookpath(NULL, "/.config/sat/hook");
+		t (!path && errno);
+		path = path ? path : (do_not_free = 1, "/etc/sat/hook");
+		t (setenv("SAT_HOOK_PATH", path, 1));
+		if (!do_not_free)
+			free(path);
+	}
+
 	/* Determinate whether the socket was passed with stdin. */
 	if (fstat(STDIN_FILENO, &attr))
 		t (errno != EBADF);
@@ -208,21 +223,6 @@ main(int argc, char *argv[])
 				close(fd);
 			}
 		}
-	}
-
-	/* Get hook-script pathname. */
-	if (!getenv("SAT_HOOK_PATH")) {
-		int do_not_free = 0;
-		path = hookpath("XDG_CONFIG_HOME", "/sat/hook");
-		t (!path && errno);
-		path = path ? path : hookpath("HOME", "/.config/sat/hook");
-		t (!path && errno);
-		path = path ? path : hookpath(NULL, "/.config/sat/hook");
-		t (!path && errno);
-		path = path ? path : (do_not_free = 1, "/etc/sat/hook");
-		t (setenv("SAT_HOOK_PATH", path, 1));
-		if (!do_not_free)
-			free(path);
 	}
 
 	/* Listen for incoming conections. */
