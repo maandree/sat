@@ -151,7 +151,7 @@ try_next:
 
 
 /**
- * The sat daemon.
+ * The sat daemon initialisation.
  * 
  * @param   argc  Any value in [0, 2] is accepted.
  * @param   argv  The name of the process, and -f if the process
