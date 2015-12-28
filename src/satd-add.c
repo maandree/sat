@@ -41,6 +41,8 @@ main(int argc, char *argv[])
 	int msg_argc;
 	char **msg = NULL;
 
+	t (reopen(STATE_FILENO, O_RDRW));
+
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n));
 	shutdown(SOCK_FILENO, SHUT_RD);

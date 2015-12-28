@@ -254,6 +254,8 @@ main(int argc, char *argv[])
 	struct job** jobs;
 	struct job** job;
 
+	t (reopen(STATE_FILENO, O_RDRW));
+
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || n);
 	shutdown(SOCK_FILENO, SHUT_RD);

@@ -20,10 +20,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include "daemon.h"
-#include <stdlib.h>
 #include <unistd.h>
-#include <errno.h>
-#include <string.h>
+#include <stdio.h>
+#include <fcntl.h>
 
 
 
@@ -130,5 +129,31 @@ sublist(char *const *list, size_t n)
 	return rc;
 fail:
 	return NULL;
+}
+
+
+/**
+ * Create a new open file descriptor for an already
+ * existing file descriptor.
+ * 
+ * @param   fd     The file descriptor that shall be promoted
+ *                 to a new open file descriptor.
+ * @param   oflag  See open(3), `O_CREAT` is not allowed.
+ * @return         0 on success, -1 on error.
+ */
+int
+reopen(int fd, int oflag)
+{
+	char path[sizeof("/dev/fd/") + 3 * sizeof(int)];
+	int r, saved_errno;
+
+	sprintf(path, "/dev/fd/%i", fd);
+	r = open(fd, oflag);
+	if (r < 0)
+		return -1;
+	if (dup2(r, fd) == -1)
+		return saved_errno = errno, close(r), errno = saved_errno, -1;
+	close(r);
+	return 0;
 }
 

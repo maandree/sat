@@ -150,3 +150,14 @@ char **restore_array(char *buf, size_t len, size_t *n);
  */
 char **sublist(char *const *list, size_t n);
 
+/**
+ * Create a new open file descriptor for an already
+ * existing file descriptor.
+ * 
+ * @param   fd     The file descriptor that shall be promoted
+ *                 to a new open file descriptor.
+ * @param   oflag  See open(3), `O_CREAT` is not allowed.
+ * @return         0 on success, -1 on error.
+ */
+int reopen(int fd, int oflag);
+
