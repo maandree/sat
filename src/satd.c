@@ -152,6 +152,7 @@ main(int argc, char *argv[])
 		sock = STDIN_FILENO;
 	else
 		t (sock = create_socket(&address), sock == -1);
+
 	/* Socket shall be on fd 3, and all below shall be /dev/null. */
 	if (sock != 3) {
 		int want;
