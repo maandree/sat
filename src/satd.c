@@ -218,10 +218,9 @@ main(int argc, char *argv[])
 	/* Daemonise. */
 	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS, sock, -1));
 
-	close(sock);
-	unlink(address.sun_path);
-	undaemonise();
-	return 0;
+	/* Change to a process image without all this initialisation text. */
+	execl(LIBEXEC "/" PACKAGE "/satd-diminished", argv0,
+	      address.sun_path, getenv("SAT_HOOK_PATH"), NULL);
 
 fail:
 	if (errno)
