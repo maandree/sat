@@ -38,11 +38,6 @@
  */
 #define STATE_FILENO  4
 
-/**
- * The file descriptor for connection to the current client.
- */
-#define CONN_FILENO  5
-
 
 /**
  * Command: queue a job.
@@ -125,14 +120,6 @@ main(int argc, char *argv[], char *envp[])
 	if (signal(SIGHUP,  sighandler) == SIG_ERR)  goto fail;
 	if (signal(SIGCHLD, sighandler) == SIG_ERR)  goto fail;
 
-	/* Pick-up where we left off. */
-	if (!fstat(CONN_FILENO, &_attr)) {
-		fd = CONN_FILENO;
-		goto peek_again;
-	} else if (errno != EBADF) {
-		goto fail;
-	}
-
 	/* The magnificent loop. */
 accept_again:
 	if (received_signo == SIGHUP) {
@@ -152,13 +139,8 @@ accept_again:
 			goto fail;
 		}
 	}
-	if (fd != CONN_FILENO) {
-		if (dup2(fd, CONN_FILENO) == -1)
-			goto fail;
-		close(fd), fd = CONN_FILENO;
-	}
 peek_again:
-	if (recv(fd, &type, sizeof(char), MSG_PEEK /* Just peek in case we fail! */) <= 0) {
+	if (read(fd, &type, sizeof(char)) <= 0) {
 		perror(argv[0]);
 		goto connection_done;
 	}
