@@ -122,7 +122,9 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_un address;
-	int sock = -1, foreground = 0;
+	int sock = -1, foreground = 0, fd = -1, have_socket = 0;
+	struct stat attr;
+	char *path;
 
 	/* Parse command line. */
 	if (argc > 0)  argv0 = argv[0];
@@ -131,14 +133,38 @@ main(int argc, char *argv[])
 		if (!(foreground = !strcmp(argv[1], "-f")))
 			usage();
 
-	/* Daemonise. */
-	t (foreground ? 0 : daemonise("satd", 0));
+	/* Determinate whether the socket was passed with stdin. */
+	if (fstat(STDIN_FILENO, &attr))
+		t (errno != EBADF);
+	else if ((path = getenv("SATD_SOCKET_PATH")))
+		have_socket = S_ISSOCK(attr.st_mode);
 
-	/* Create socket. */
-	t (sock = create_socket(&address), sock == -1);
+	/* Daemonise. */
+	t (foreground ? 0 : daemonise("satd", have_socket ? DAEMONISE_KEEP_STDIN : 0));
+
+	/* Get or create socket. */
+	if (have_socket) {
+		if (strlen(path) >= sizeof(address.sun_path))
+			t ((errno = ENAMETOOLONG));
+		strcpy(address.sun_path, path);
+	}
+	if (have_socket)
+		sock = STDIN_FILENO;
+	else
+		t (sock = create_socket(&address), sock == -1);
+	/* Socket shall be on fd 3, and all below shall be /dev/null. */
 	if (sock != 3) {
+		int want;
 		t (dup2(sock, 3) == -1);
-		close(sock), sock = 3;
+		close(sock), want = sock, sock = 3;
+		if (want < 3) {
+			fd = open("/dev/null", O_RDWR);
+			t (fd == -1);
+			if (fd != want) {
+				t (dup2(fd, want) == -1);
+				close(fd);
+			}
+		}
 	}
 
 	/* Get hook-script pathname. */
@@ -162,6 +188,9 @@ fail:
 	if (sock >= 0) {
 		close(sock);
 		unlink(address.sun_path);
+	}
+	if (fd >= 0) {
+		close(fd);
 	}
 	undaemonise();
 	return 1;
