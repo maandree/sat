@@ -1,0 +1,19 @@
+sat.c    The satd program, ask satd to queue a job.
+satq.c   The satq program, ask satd for a list of queued jobs.
+satr.c   The satr program, ask satd to run jobs early.
+satrm.c  The satrm program, ask satd to remove jobs from the queue.
+
+satd.c             The initialisation part of satd.
+satd-diminished.c  The rest of satd, std.c exec:s to this.
+
+parse_time.[ch]    Use by sat.c to parse the time argument.
+                   Only rudimentary parsing is done.
+
+daemonise.[ch]     From <http://github.com/maandree/slibc>;
+                   daemonisation of the process. Used by satd.c
+
+client.[ch]        Used by sat{,q,r,rm}.c, code for communicating
+                   with satd, starts satd transparently if necessary.
+
+common.h           Used by sat{,q,r,rm}.c, some shared code.
+
