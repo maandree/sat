@@ -164,7 +164,7 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_un address;
-	int sock = -1, foreground = 0, fd = -1, have_socket = 0;
+	int sock = -1, foreground = 0, fd = -1;
 	struct stat attr;
 	char *path;
 
@@ -190,22 +190,8 @@ main(int argc, char *argv[])
 			free(path);
 	}
 
-	/* Determinate whether the socket was passed with stdin. */
-	if (fstat(STDIN_FILENO, &attr))
-		t (errno != EBADF);
-	else if ((path = getenv("SATD_SOCKET_PATH")))
-		have_socket = S_ISSOCK(attr.st_mode);
-
-	/* Get or create socket. */
-	if (have_socket) {
-		if (strlen(path) >= sizeof(address.sun_path))
-			t ((errno = ENAMETOOLONG));
-		strcpy(address.sun_path, path);
-	}
-	if (have_socket)
-		sock = STDIN_FILENO;
-	else
-		t (sock = create_socket(&address), sock == -1);
+	/* Create socket. */
+	t (sock = create_socket(&address), sock == -1);
 
 	/* Socket shall be on fd 3, and all below shall be /dev/null. */
 	if (sock != 3) {
@@ -230,11 +216,7 @@ main(int argc, char *argv[])
 #endif
 
 	/* Daemonise. */
-	if (!foreground) {
-		int flags = have_socket ? DAEMONISE_KEEP_STDIN : 0;
-		flags |= DAEMONISE_KEEP_FDS;
-		t (daemonise("satd", flags, sock, -1));
-	}
+	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS, sock, -1));
 
 	close(sock);
 	unlink(address.sun_path);
