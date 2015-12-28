@@ -89,15 +89,11 @@ main(int argc, char *argv[])
 	struct sockaddr_un address;
 	int sock = -1, foreground = 0;
 
-	if (argc > 0)
-		argv0 = argv[0];
-	if (argc > 2)
-		usage();
-	if (argc == 2) {
-		if (strcmp(argv[1], "-f"))
+	if (argc > 0)  argv0 = argv[0];
+	if (argc > 2)  usage();
+	if (argc == 2)
+		if (!(foreground = !strcmp(argv[1], "-f")))
 			usage();
-		foreground = 1;
-	}
 
 	t (foreground ? 0 : daemonise("satd", 0));
 
