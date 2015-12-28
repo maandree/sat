@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 
 
@@ -85,7 +86,7 @@ main(int argc, char *argv[])
 	struct stat _attr;
 
 	/* Pick-up where we left off. */
-	if (!fstat(CONN_FILENO, _attr)) {
+	if (!fstat(CONN_FILENO, &_attr)) {
 		fd = CONN_FILENO;
 		goto peek_again;
 	} else if (errno != EBADF) {
