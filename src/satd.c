@@ -203,7 +203,7 @@ main(int argc, char *argv[])
 			t (fd == -1);
 			if (fd != want) {
 				t (dup2(fd, want) == -1);
-				close(fd);
+				close(fd), fd = -1;
 			}
 		}
 	}
