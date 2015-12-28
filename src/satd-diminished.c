@@ -150,7 +150,7 @@ accept_again:
 		close(fd), fd = CONN_FILENO;
 	}
 peek_again:
-	if (recv(fd, &type, (size_t)1, MSG_PEEK /* Just peek in case we fail! */) <= 0) {
+	if (recv(fd, &type, sizeof(char), MSG_PEEK /* Just peek in case we fail! */) <= 0) {
 		perror(argv[0]);
 		goto connection_done;
 	}
