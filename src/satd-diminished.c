@@ -87,7 +87,16 @@ static volatile sig_atomic_to received_signo = 0;
  */
 static void sighander(int signo)
 {
-	received_signo = (sig_atomic_to)signo;
+	int saved_errno = errno;
+	switch (signo) {
+	case SIGCHLD:
+		waitpid(-1, NULL, WNOHANG);
+		break;
+	default:
+		received_signo = (sig_atomic_to)signo;
+		break;
+	}
+	errno = saved_errno;
 }
 
 
@@ -126,7 +135,6 @@ main(int argc, char *argv[], char *envp[])
 
 	/* The magnificent loop. */
 accept_again:
-	while (waitpid(-1, NULL, WNOHANG) > 0);
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_PREFIX "diminished", argv, envp);
 		perror(argv[0]);
