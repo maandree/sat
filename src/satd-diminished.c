@@ -87,7 +87,7 @@ main(int argc, char *argv[])
 	/* Pick-up where we left off. */
 	if (!fstat(CONN_FILENO, _attr)) {
 		fd = CONN_FILENO;
-		goto fork_again;
+		goto peek_again;
 	} else if (errno != EBADF) {
 		goto fail;
 	}
@@ -110,11 +110,12 @@ accept_again:
 			goto fail;
 		close(fd), fd = CONN_FILENO;
 	}
-fork_again:
+peek_again:
 	if (recv(fd, &type, (size_t)1, MSG_PEEK /* Just peek in case we fail! */) <= 0) {
 		perror(argv[0]);
 		goto connection_done;
 	}
+fork_again:
 	switch ((pid = fork())) {
 	case -1:
 		if (errno != EAGAIN)
