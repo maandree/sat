@@ -64,6 +64,9 @@ NOTES
 	nohup(1) combined with sh(1) and, sleep(1) or sleep-until(1)
 	should be sufficient for most users.
 
+	sat stores the job queue in a file. However, this file does not
+	persist between reboot.
+
 SEE ALSO
 	at(1), cron(1), sleep-until(1)
 
