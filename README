@@ -44,6 +44,14 @@ ENVIRONMENT
 		interprocess communication related files are stored. If
 		unset or empty, /run is used.
 
+	SAT_HOOK_PATH
+		The pathname of the hook script to use. Does not have to
+		already exist. If not defined, $XDG_CONFIG_HOME/sat/hook
+		(if XDG_CONFIG_HOME is defined), $HOME/.config/sat/hook
+		(if HOME is defined), ~/.config/sat/hook (if the user has
+		a home and is not root), or /etc/sat/hook (otherwise) is
+		used.
+
 SEE ALSO
 	at(1), cron(1), sleep-until(1)
 

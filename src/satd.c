@@ -21,6 +21,7 @@
  */
 #include <unistd.h>
 #include <errno.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -109,6 +110,47 @@ fail:
 
 
 /**
+ * Construct the pathname for the hook script.
+ * 
+ * @param   env     The environment variable to use for the beginning
+ *                  of the pathname, `NULL` for the home directory.
+ * @param   suffix  The rest of the pathname.
+ * @return          The pathname.
+ * 
+ * @throws  0  The environment variable is not set, or, if `env` is
+ *             `NULL` the user is root or homeless.
+ */
+static char *
+hookpath(const char *env, const char *suffix)
+{
+	const char *prefix = NULL;
+	char *path;
+	struct passwd *pwd;
+
+	if (!env) {
+		if (!getuid())
+			goto try_next;
+		pwd = getpwuid(getuid());
+		prefix = pwd ? pwd->pw_dir : NULL;
+	} else {
+		prefix = getenv(env);
+	}
+	if (!prefix || !*prefix)
+		goto try_next;
+
+	path = malloc((strlen(prefix) + strlen(suffix) + 1) * sizeof(char));
+	t (!path);
+	stpcpy(stpcpy(path, prefix), suffix);
+
+	return path;
+fail:
+	return NULL;
+try_next:
+	return errno = 0, NULL;
+}
+
+
+/**
  * The sat daemon.
  * 
  * @param   argc  Any value in [0, 2] is accepted.
@@ -169,7 +211,19 @@ main(int argc, char *argv[])
 	}
 
 	/* Get hook-script pathname. */
-	/* TODO */
+	if (!getenv("SAT_HOOK_PATH")) {
+		int do_not_free = 0;
+		path = hookpath("XDG_CONFIG_HOME", "/sat/hook");
+		t (!path && errno);
+		path = path ? path : hookpath("HOME", "/.config/sat/hook");
+		t (!path && errno);
+		path = path ? path : hookpath(NULL, "/.config/sat/hook");
+		t (!path && errno);
+		path = path ? path : (do_not_free = 1, "/etc/sat/hook");
+		t (setenv("SAT_HOOK_PATH", path, 1));
+		if (!do_not_free)
+			free(path);
+	}
 
 	/* Listen for incoming conections. */
 #if SOMAXCONN < SATD_BACKLOG
