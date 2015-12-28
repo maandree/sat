@@ -90,7 +90,6 @@ create_socket(struct sockaddr_un *address)
 does_not_exist:
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
 	t (fchmod(fd, S_IRWXU) == -1);
-	t (fchown(fd, getuid(), getgid()) == -1);
 	t (bind(fd, (struct sockaddr *)address, sizeof(*address)) == -1);
 	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
 	bound = 1;
