@@ -30,6 +30,15 @@
 
 
 
+/**
+ * The size of the backlog on the socket.
+ */
+#ifndef SATD_BACKLOG
+# define SATD_BACKLOG  5
+#endif
+
+
+
 COMMAND("satd")
 USAGE("[-f]")
 
@@ -102,6 +111,12 @@ main(int argc, char *argv[])
 		t (dup2(sock, 3) == -1);
 		close(sock), sock = 3;
 	}
+
+#ifdef SOMAXCONN < SATD_BACKLOG
+	t (listen(sock, SOMAXCONN));
+#else
+	t (listen(sock, SATD_BACKLOG));
+#endif
 
 	close(sock);
 	unlink(address.sun_path);
