@@ -219,7 +219,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 
 	/* Get current time and clock. */
 	clock_gettime(CLOCK_REALTIME, &now);
-	*clk = plus ? CLOCK_MONOTONIC : CLOCK_REALTIME;
+	*clk = plus ? CLOCK_BOOTTIME : CLOCK_REALTIME;
 
 	/* Mañana? */
 	if (!strcmp(str, "mañana")) { /* Do not documented. */
@@ -263,7 +263,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 
 	/* Check for error at end, and missing explicit UTC. */
 	if (*str) {
-		if (*clk == CLOCK_MONOTONIC)
+		if (*clk == CLOCK_BOOTTIME)
 			FAIL(EINVAL);
 		while (*str == ' ')  str++;
 		if (!strcasecmp(str, "Z") && !strcasecmp(str, "UTC"))
@@ -276,7 +276,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	}
 
 	/* Adjust the day? */
-	if (*clk == CLOCK_MONOTONIC)
+	if (*clk == CLOCK_BOOTTIME)
 		return 0;
 	if (ts->tv_sec < now.tv_sec) { /* Ignore partial second. */
 		ts->tv_sec += ONE_DAY;
