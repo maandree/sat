@@ -54,9 +54,6 @@ main(int argc, char *argv[], char *envp[])
 	struct timespec ts;
 	clockid_t clk;
 	char *msg = NULL;
-	char **w;
-	char **r;
-	int removed_empty = 0;
 	size_t n;
 
 	if ((argc < 3) || (argv[1][0] == '-'))
@@ -90,24 +87,13 @@ main(int argc, char *argv[], char *envp[])
 	argc -= 2;
 	argv += 2;
 
-	/* Remove empty environment entries */
-	for (w = r = envp; *r; r++) {
-		if (**r) {
-			*w++ = *r;
-		} else if (removed_empty == 0) {
-			fprintf(stderr,
-				"%s: warning: removed empty "
-				"environment entry.\n", argv0);
-			removed_empty = 0;
-		}
-	}
-
 	/* Construct message to send to the daemon. */
 	n = measure_array(argv) + measure_array(envp);
-	t (!(msg = malloc(n + sizeof(clk) + sizeof(ts))));
+	t (!(msg = malloc(n + sizeof(int) + sizeof(clk) + sizeof(ts))));
 	store_array(store_array(msg, argv), envp);
-	memcpy(msg + n, &clk, sizeof(clk)), n += sizeof(clk);
-	memcpy(msg + n, &ts,  sizeof(ts)),  n += sizeof(ts);
+	memcpy(msg + n, &argc, sizeof(int)), n += sizeof(int);
+	memcpy(msg + n, &clk,  sizeof(clk)), n += sizeof(clk);
+	memcpy(msg + n, &ts,   sizeof(ts)),  n += sizeof(ts);
 
 	/* Send job to daemon, start daemon if necessary. */
 	SEND(SAT_QUEUE, n, msg);

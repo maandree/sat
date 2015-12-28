@@ -19,5 +19,7 @@ daemonise.[ch]     From <http://github.com/maandree/slibc>;
 client.[ch]        Used by sat{,q,r,rm}.c, code for communicating
                    with satd, starts satd transparently if necessary.
 
-common.h           Used by sat{,q,r,rm}.c, some shared code.
+daemon.[ch]        Used by satd*.c, some shared code for daemons objects.
+
+common.h           Used by sat{,q,r,rm,d}.c, some shared code.
 

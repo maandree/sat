@@ -30,6 +30,7 @@
 
 #include "daemonise.h"
 #include "common.h"
+#include "daemon.h"
 
 
 
@@ -243,16 +244,16 @@ main(int argc, char *argv[])
 	t (state == -1);
 	free(path), path = NULL;
 
-	/* The state fill shall be on fd 4. */
-	t (dup2_and_null(state, 4) == -1);
-	state = 4;
+	/* The state fill shall be on fd STATE_FILENO. */
+	t (dup2_and_null(state, STATE_FILENO) == -1);
+	state = STATE_FILENO;
 
 	/* Create socket. */
 	t (sock = create_socket(&address), sock == -1);
 
-	/* Socket shall be on fd 3. */
-	t (dup2_and_null(sock, 3) == -1);
-	sock = 3;
+	/* Socket shall be on fd SOCK_FILENO. */
+	t (dup2_and_null(sock, SOCK_FILENO) == -1);
+	sock = SOCK_FILENO;
 
 	/* Listen for incoming conections. */
 #if SOMAXCONN < SATD_BACKLOG

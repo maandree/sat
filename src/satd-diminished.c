@@ -28,17 +28,8 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 
+#include "daemon.h"
 
-
-/**
- * The file descriptor for the socket.
- */
-#define SOCK_FILENO  3
-
-/**
- * The file descriptor for the state file.
- */
-#define STATE_FILENO  4
 
 
 /**

@@ -26,12 +26,14 @@
 
 
 
+#ifndef t
 /**
  * Go to `fail` if a statement evaluates to non-zero.
  * 
  * @param  ...  The statement.
  */
-#define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
+# define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
+#endif
 
 
 
