@@ -85,6 +85,8 @@ main(int argc, char *argv[])
 	const char *image;
 	struct stat _attr;
 
+	/* TODO set up signal handlers. */
+
 	/* Pick-up where we left off. */
 	if (!fstat(CONN_FILENO, &_attr)) {
 		fd = CONN_FILENO;
@@ -93,6 +95,7 @@ main(int argc, char *argv[])
 		goto fail;
 	}
 
+	/* The magnificent loop. */
 accept_again:
 	fd = accept(SOCK_FILENO, NULL, NULL);
 	if (fd == -1) {
