@@ -204,7 +204,6 @@ main(int argc, char *argv[])
 {
 	struct sockaddr_un address;
 	int sock = -1, state = -1, foreground = 0;
-	struct stat attr;
 	char *path = NULL;
 	char *dir;
 	ssize_t len;

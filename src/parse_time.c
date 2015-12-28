@@ -174,8 +174,6 @@ parse_time_time(const char *str, struct timespec *ts, const char **end)
 static int
 parse_time_seconds(const char *str, struct timespec *ts, const char **end)
 {
-	size_t points = 0;
-
 	memset(ts, 0, sizeof(*ts));
 
 	ts->tv_sec = strtotime(str, end);

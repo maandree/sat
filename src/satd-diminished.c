@@ -84,7 +84,6 @@ main(int argc, char *argv[], char *envp[])
 	pid_t pid;
 	char type;
 	const char *image;
-	struct stat _attr;
 
 	/* Set up signal handlers. */
 	if (signal(SIGHUP,  sighandler) == SIG_ERR)  goto fail;
@@ -109,7 +108,6 @@ accept_again:
 			goto fail;
 		}
 	}
-peek_again:
 	if (read(fd, &type, sizeof(char)) <= 0) {
 		perror(argv[0]);
 		goto connection_done;

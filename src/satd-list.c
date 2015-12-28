@@ -37,7 +37,7 @@
  *               `NULL` on error.
  */
 static char *
-quote(const unsigned char *str)
+quote(const char *str)
 {
 	size_t in = 0; /* < ' '             */
 	size_t sn = 0; /* = ' ', '"' or '$' */
@@ -45,10 +45,10 @@ quote(const unsigned char *str)
 	size_t qn = 0; /* = '\''            */
 	size_t rn = 0; /* other             */
 	size_t n, i = 0;
-	char *s;
+	const unsigned char *s;
 	char *rc;
 
-	for (s = str; *s; s++) {
+	for (s = (const unsigned char *)str; *s; s++) {
 		if      (*s <  ' ')   in++;
 		else if (*s == ' ')   sn++;
 		else if (*s == '"')   sn++;
@@ -65,7 +65,7 @@ quote(const unsigned char *str)
 		n = rn + sn + bn + 4 * qn + 4 * in + 2;
 		t (!(rc = malloc((n + 1) * sizeof(char))));
 		rc[i++] = '\'';
-		for (s = str; *s; s++) {
+		for (s = (const unsigned char *)str; *s; s++) {
 			rc[i++] = (char)*s;
 			if (*s == '\'')
 				rc[i++] = '\\', rc[i++] = '\'', rc[i++] = '\'';
@@ -79,7 +79,7 @@ quote(const unsigned char *str)
 		t (!(rc = malloc((n + 1) * sizeof(char))));
 		rc[i++] = '$';
 		rc[i++] = '\'';
-		for (s = str; *s; s++) {
+		for (s = (const unsigned char *)str; *s; s++) {
 			if (*s <  ' ') {
 				rc[i++] = '\\';
 				rc[i++] = 'x';
@@ -113,12 +113,12 @@ static void
 strduration(char *buffer, time_t s)
 {
 	char *buf = buffer;
-	int seconds, minutes, hours, days;
+	int seconds, minutes, hours;
 	seconds = s % 60, s /= 60;
 	minutes = s % 60, s /= 60;
 	hours   = s % 24, s /= 24;
 	if (s) {
-		buf += sprintf(buf, "%llid", (long long int)s));
+		buf += sprintf(buf, "%llid", (long long int)s);
 		buf += sprintf(buf, "%02i:", hours);
 		buf += sprintf(buf, "%02i", minutes);
 	} else if (hours) {
@@ -138,7 +138,7 @@ strduration(char *buffer, time_t s)
  * @return       0 on success, -1 on error.
  */
 static int
-send_job_str(struct job* job)
+send_job_human(struct job* job)
 {
 	struct tm *tm;
 	struct timespec rem;
@@ -150,11 +150,12 @@ send_job_str(struct job* job)
 	char timestr_a[sizeof("0000-00-00 00:00:00") + 3 * sizeof(time_t)];
 	char timestr_b[10];
 	char **args = NULL;
-	const char **arg;
-	const char **argv = NULL;
-	const char **envp = NULL;
+	char **arg;
+	char **argv = NULL;
+	char **envp = NULL;
 	size_t argsn;
 	int rc = 0;
+	int saved_errno;
 
 	/* Get remaining time. */
 	if (clock_gettime(job->clk, &rem))
@@ -182,8 +183,8 @@ send_job_str(struct job* job)
 	/* Get textual representation of the expiration time. */
 	switch (job->clk) {
 	case CLOCK_REALTIME:
-		t (!(tm = localtime(job->ts.tv_sec)));
-		strftime(timestr_a, sizeof(timestr), "%Y-%m-%d %H:%M:%S", tm);
+		t (!(tm = localtime(&(job->ts.tv_sec))));
+		strftime(timestr_a, sizeof(timestr_a), "%Y-%m-%d %H:%M:%S", tm);
 		break;
 	default:
 		strduration(timestr_a, job->ts.tv_sec);
@@ -193,8 +194,8 @@ send_job_str(struct job* job)
 
 	/* Get arguments. */
 	t (!(args = restore_array(job->payload, job->n, &argsn)));
-	t (!(argv = sublist(args, (size_t)argc)));
-	t (!(envp = sublist(args + argc, argsn - (size_t)argc)));
+	t (!(argv = sublist(args, (size_t)(job->argc))));
+	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc))));
 
 	/* Send message. */
 	t (!(qstr = quote(args[0])));
@@ -205,15 +206,15 @@ send_job_str(struct job* job)
 		       "  time: ", timestr_a, ".", timestr_b, "\n",
 		       "  argv:",
 		       NULL));
-	for (arg = argv, *arg, arg++) {
+	for (arg = argv; *arg; arg++) {
 		free(qstr);
-		t (!(qstr = quote(arg)));
+		t (!(qstr = quote(*arg)));
 		t (send_string(SOCK_FILENO, STDOUT_FILENO, " ", qstr, NULL));
 	}
 	free(qstr), qstr = NULL;
 	t (send_string(SOCK_FILENO, STDOUT_FILENO, "\n  envp:", NULL));
-	for (arg = envp, *arg, arg++) {
-		t (!(qstr = quote(arg)));
+	for (arg = envp; *arg; arg++) {
+		t (!(qstr = quote(*arg)));
 		t (send_string(SOCK_FILENO, STDOUT_FILENO, " ", qstr, NULL));
 		free(qstr);
 	}
@@ -253,8 +254,10 @@ main(int argc, char *argv[])
 	char *message = NULL;
 	struct job** jobs;
 	struct job** job;
+	int rc = 0;
 
-	t (reopen(STATE_FILENO, O_RDRW));
+	assert(argc == 4);
+	t (reopen(STATE_FILENO, O_RDWR));
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || n);
@@ -263,7 +266,7 @@ main(int argc, char *argv[])
 	/* Perform action. */
 	t (!(jobs = get_jobs()));
 	for (job = jobs; *job; job++)
-		t (send_job_str(*job));
+		t (send_job_human(*job));
 
 done:
 	/* Cleanup. */
@@ -275,9 +278,11 @@ done:
 	free(message);
 	return rc;
 fail:
-	if (send_string(SOCK_FILENO, STDERR_FILENO, argv[0], ": ", strerror(errno) "\n", NULL))
+	if (send_string(SOCK_FILENO, STDERR_FILENO, argv[0], ": ", strerror(errno), "\n", NULL))
 		perror(argv[0]);
 	rc = 1;
 	goto done;
+
+	(void) argc;
 }
 

@@ -39,22 +39,26 @@ main(int argc, char *argv[])
 	size_t n = 0, elements = 0, i;
 	char *message = NULL;
 	int msg_argc;
-	char **msg = NULL;
 
-	t (reopen(STATE_FILENO, O_RDRW));
+	assert(argc == 4);
+	t (reopen(STATE_FILENO, O_RDWR));
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n));
 	shutdown(SOCK_FILENO, SHUT_RD);
-	t (n < sizeof(int) + sizeof(clk) + sizeof(ts));
-	n -= sizeof(int) + sizeof(clk) + sizeof(ts);
+	t (n < sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec));
+	n -= sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec);
 	msg_argc = *(int *)(message + n);
 	t ((msg_argc < 1) || !n || message[n - 1]);
 	for (i = n; i--; elements += !message[i]);
 	t (elements < (size_t)msg_argc);
-	n += sizeof(int) + sizeof(clk) + sizeof(ts);
+	n += sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec);
+
+	(void) argv;
 
 	return 0;
 fail:
+
+	(void) argc;
 }
 

@@ -24,6 +24,10 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <assert.h>
 #include <sys/socket.h>
 
 

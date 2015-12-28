@@ -20,9 +20,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include "daemon.h"
-#include <unistd.h>
-#include <stdio.h>
-#include <fcntl.h>
 
 
 
@@ -148,7 +145,7 @@ reopen(int fd, int oflag)
 	int r, saved_errno;
 
 	sprintf(path, "/dev/fd/%i", fd);
-	r = open(fd, oflag);
+	r = open(path, oflag);
 	if (r < 0)
 		return -1;
 	if (dup2(r, fd) == -1)

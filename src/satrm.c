@@ -51,7 +51,7 @@ main(int argc, char *argv[])
 
 	NO_OPTIONS;
 	CONSTRUCT_MESSAGE;
-	SEND(SAT_REMOVE, n, msg));
+	SEND(SAT_REMOVE, n, msg);
 	END(msg);
 }
 
