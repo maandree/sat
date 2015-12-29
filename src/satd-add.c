@@ -41,12 +41,9 @@ main(int argc, char *argv[])
 	ssize_t r;
 	char *message = NULL;
 	int msg_argc;
-	int rc = 0;
 	struct job *job = NULL;
 	struct stat attr;
-
-	assert(argc == 3);
-	t (reopen(STATE_FILENO, O_RDWR));
+	DAEMON_PROLOGUE;
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n));
@@ -83,20 +80,9 @@ main(int argc, char *argv[])
 	fsync(STATE_FILENO);
 	t (flock(STATE_FILENO, LOCK_UN));
 
-done:
-	/* Cleanup. */
-	shutdown(SOCK_FILENO, SHUT_WR);
-	close(SOCK_FILENO);
-	close(STATE_FILENO);
+	DAEMON_CLEANUP_START;
 	free(message);
 	free(job);
-	return rc;
-fail:
-	if (send_string(SOCK_FILENO, STDERR_FILENO, argv[0], ": ", strerror(errno), "\n", NULL))
-		perror(argv[0]);
-	rc = 1;
-	goto done;
-
-	(void) argc;
+	DAEMON_CLEANUP_END;
 }
 

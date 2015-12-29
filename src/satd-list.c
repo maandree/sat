@@ -249,10 +249,7 @@ main(int argc, char *argv[])
 	char *message = NULL;
 	struct job** jobs;
 	struct job** job;
-	int rc = 0;
-
-	assert(argc == 3);
-	t (reopen(STATE_FILENO, O_RDWR));
+	DAEMON_PROLOGUE;
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || n);
@@ -263,22 +260,11 @@ main(int argc, char *argv[])
 	for (job = jobs; *job; job++)
 		t (send_job_human(*job));
 
-done:
-	/* Cleanup. */
-	shutdown(SOCK_FILENO, SHUT_WR);
-	close(SOCK_FILENO);
-	close(STATE_FILENO);
+	DAEMON_CLEANUP_START;
 	for (job = jobs; *job; job++)
 		free(*job);
 	free(jobs);
 	free(message);
-	return rc;
-fail:
-	if (send_string(SOCK_FILENO, STDERR_FILENO, argv[0], ": ", strerror(errno), "\n", NULL))
-		perror(argv[0]);
-	rc = 1;
-	goto done;
-
-	(void) argc;
+	DAEMON_CLEANUP_END;
 }
 
