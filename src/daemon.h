@@ -179,6 +179,15 @@ int reopen(int fd, int oflag);
 int send_string(int sockfd, int outfd, ...);
 
 /**
+ * Run a job or a hook.
+ * 
+ * @param   job   The job.
+ * @param   hook  The hook, `NULL` to run the job.
+ * @return        0 on success, -1 on error, 1 if the child failed.
+ */
+int run_job_or_hook(struct job *job, const char *hook);
+
+/**
  * Removes (and optionally runs) a job.
  * 
  * @param   jobno   The job number, `NULL` for any job.

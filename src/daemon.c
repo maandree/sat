@@ -263,7 +263,7 @@ fail:
  * @param   hook  The hook, `NULL` to run the job.
  * @return        0 on success, -1 on error, 1 if the child failed.
  */
-static int
+int
 run_job_or_hook(struct job *job, const char *hook)
 {
 	pid_t pid;
