@@ -91,7 +91,7 @@ quote(const char *str)
 		}
 		rc[i++] = '\'';
 		rc[i] = '\0';
-		break;
+		return rc;
 	}
 fail:
 	return NULL;
