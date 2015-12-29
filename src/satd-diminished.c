@@ -44,7 +44,7 @@
 /**
  * The value on `timer_pid` when there is not "timer" image running.
  */
-#define NO_TIMER_SPAWED  -2  /* Must be negative, but not -1. */
+#define NO_TIMER_SPAWNED  -2  /* Must be negative, but not -1. */
 
 
 
@@ -54,11 +54,11 @@
 static volatile sig_atomic_t received_signo = SIGCHLD; /* Forces the "timer" image to run. */
 
 /**
- * The PID the "timer" fork, `NO_TIMER_SPAWED` if not running.
+ * The PID the "timer" fork, `NO_TIMER_SPAWNED` if not running.
  * 
  * It does not matter that this is lost on a successful SIGHUP.
  */
-static volatile pid_t timer_pid = NO_TIMER_SPAWED;
+static volatile pid_t timer_pid = NO_TIMER_SPAWNED;
 
 
 
@@ -72,7 +72,7 @@ sighandler(int signo)
 {
 	int saved_errno = errno;
 	if ((signo == SIGCHLD) && (waitpid(-1, NULL, WNOHANG) == timer_pid))
-		timer_pid = NO_TIMER_SPAWED;
+		timer_pid = NO_TIMER_SPAWNED;
 	else
 		received_signo = (sig_atomic_t)signo;
 	errno = saved_errno;
@@ -166,7 +166,7 @@ test_timer(int fd, const fd_set *fdset)
 	};
 	if (!FD_ISSET(BOOT_FILENO, fdset))                return 0;
 	if (read(BOOT_FILENO, &_overrun, (size_t)8) < 8)  return -1;
-	if (timer_pid == NO_TIMER_SPAWED)                 return 0;
+	if (timer_pid == NO_TIMER_SPAWNED)                 return 0;
 	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &spec, NULL);
 }
 
@@ -194,7 +194,7 @@ main(int argc, char *argv[], char *envp[])
 
 	/* The magnificent loop. */
 again:
-	if (accepted && (timer_pid == NO_TIMER_SPAWED)) {
+	if (accepted && (timer_pid == NO_TIMER_SPAWNED)) {
 		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
 		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
 		goto done;
@@ -203,7 +203,7 @@ not_done:
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_IMAGE("diminished"), argv, envp);
 		perror(argv[0]);
-	} else if (received_signo == SIGCHLD) {
+	} else if ((received_signo == SIGCHLD) && (timer_pid == NO_TIMER_SPAWNED)) {
 		t (spawn(-1, -1, argv, envp));
 	}
 	received_signo = 0;
