@@ -135,15 +135,14 @@ hookpath(const char *env, const char *suffix)
 	if (!prefix || !*prefix)
 		goto try_next;
 
-	path = malloc((strlen(prefix) + strlen(suffix) + 1) * sizeof(char));
-	t (!path);
+	t (!(path = malloc((strlen(prefix) + strlen(suffix) + 1) * sizeof(char))));
 	stpcpy(stpcpy(path, prefix), suffix);
 
 	return path;
+try_next:
+	errno = 0;
 fail:
 	return NULL;
-try_next:
-	return errno = 0, NULL;
 }
 
 
@@ -163,19 +162,16 @@ dup2_and_null(int old, int new)
 	int want, fd = -1;
 	int saved_errno;
 
-	if (old != new) {
-		t (dup2(old, new) == -1);
-		close(old), want = old;
-		if (want < 3) {
-			fd = open("/dev/null", O_RDWR);
-			t (fd == -1);
-			if (fd != want) {
-				t (dup2(fd, want) == -1);
-				close(fd), fd = -1;
-			}
-		}
-	}
+	if (old == new)  goto done;
+	t (dup2(old, new) == -1);
+	close(old), want = old;
+	if (want >= 3)   goto done;
+	t (fd = open("/dev/null", O_RDWR), fd == -1);
+	if (fd == want)  goto done;
+	t (dup2(fd, want) == -1);
+	close(fd), fd = -1;
 
+done:
 	return new;
 fail:
 	saved_errno = errno;
@@ -200,7 +196,7 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_un address;
-	int sock = -1, state = -1, foreground = 0;
+	int sock = -1, state = -1, foreground = 0, do_not_free = 0;
 	char *path = NULL;
 	char *dir;
 
@@ -213,13 +209,9 @@ main(int argc, char *argv[])
 
 	/* Get hook-script pathname. */
 	if (!getenv("SAT_HOOK_PATH")) {
-		int do_not_free = 0;
-		path = hookpath("XDG_CONFIG_HOME", "/sat/hook");
-		t (!path && errno);
-		path = path ? path : hookpath("HOME", "/.config/sat/hook");
-		t (!path && errno);
-		path = path ? path : hookpath(NULL, "/.config/sat/hook");
-		t (!path && errno);
+		t (path =               hookpath("XDG_CONFIG_HOME", "/sat/hook"), !path && errno);
+		t (path = path ? path : hookpath("HOME", "/.config/sat/hook"),    !path && errno);
+		t (path = path ? path : hookpath(NULL, "/.config/sat/hook"),      !path && errno);
 		path = path ? path : (do_not_free = 1, "/etc/sat/hook");
 		t (setenv("SAT_HOOK_PATH", path, 1));
 		if (!do_not_free)
@@ -229,11 +221,9 @@ main(int argc, char *argv[])
 
 	/* Open/create state file. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	path = malloc(strlen(dir) * sizeof(char) + sizeof("/satd.state"));
-	t (!path);
+	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/satd.state"))));
 	stpcpy(stpcpy(path, dir), "/satd.state");
-	state = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRWXU);
-	t (state == -1);
+	t (state = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRWXU), state == -1);
 	free(path), path = NULL;
 
 	/* The state fill shall be on fd STATE_FILENO. */

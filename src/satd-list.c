@@ -47,7 +47,7 @@ quote(const char *str)
 	size_t rn = 0; /* other     */
 	size_t n, i = 0;
 	const unsigned char *s;
-	char *rc;
+	char *rc = NULL;
 
 	for (s = (const unsigned char *)str; *s; s++) {
 		if      (*s <  ' ')   in++;
@@ -70,9 +70,7 @@ quote(const char *str)
 				rc[i++] = '\\', rc[i++] = '\'', rc[i++] = '\'';
 				
 		}
-		rc[i++] = '\'';
-		rc[i] = '\0';
-		return rc;
+		break;
 	case 2:
 		n = 4 * in + rn + sn + 2 * bn + 2 * qn + 3;
 		t (!(rc = malloc((n + 1) * sizeof(char))));
@@ -85,16 +83,15 @@ quote(const char *str)
 				rc[i++] = "0123456789ABCDEF"[(*s >> 4) & 15];
 				rc[i++] = "0123456789ABCDEF"[(*s >> 0) & 15];
 			}
-			else if (*s == '\\')  rc[i++] = '\\', rc[i++] = (char)*s;
-			else if (*s == '\'')  rc[i++] = '\\', rc[i++] = (char)*s;
-			else                  rc[i++] = (char)*s;
+			else if (strchr("\\'", *s))  rc[i++] = '\\', rc[i++] = (char)*s;
+			else                         rc[i++] = (char)*s;
 		}
-		rc[i++] = '\'';
-		rc[i] = '\0';
-		return rc;
+		break;
 	}
+	rc[i++] = '\'';
+	rc[i] = '\0';
 fail:
-	return NULL;
+	return rc;
 }
 
 
@@ -150,8 +147,7 @@ send_job_human(struct job *job)
 	char **argv = NULL;
 	char **envp = NULL;
 	size_t argsn;
-	int rc = 0;
-	int saved_errno;
+	int rc = 0, saved_errno;
 
 	/* Get remaining time. */
 	if (clock_gettime(job->clk, &rem))
@@ -253,7 +249,6 @@ main(int argc, char *argv[])
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || n);
-	shutdown(SOCK_FILENO, SHUT_RD);
 
 	/* Perform action. */
 	t (!(jobs = get_jobs()));

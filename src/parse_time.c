@@ -21,6 +21,7 @@
  */
 #define _DEFAULT_SOURCE
 #include "parse_time.h"
+#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -124,25 +125,22 @@ strtotime(const char *str, const char **end)
 static int
 parse_time_time(const char *str, struct timespec *ts, const char **end)
 {
-	time_t t;
-
+	time_t tm;
 	memset(ts, 0, sizeof(*ts));
 
 	ts->tv_sec = strtotime(str, end), str = *end;
-	if (errno)
-		return -1;
+	t (errno);
 	/* Must not be restricted to 23, beyond 24 is legal. */
 	MUL(ts->tv_sec, (time_t)(60 * 60));
 
 	if (*str++ != ':')
 		FAIL(EINVAL);
-	t = strtotime(str, end), str = *end;
-	if (errno)
-		return -1;
-	if (t >= 60)
+	tm = strtotime(str, end), str = *end;
+	t (errno);
+	if (tm >= 60)
 		FAIL(EINVAL);
-	MUL(t, (time_t)60);
-	ADD(ts->tv_sec, t);
+	MUL(tm, (time_t)60);
+	ADD(ts->tv_sec, tm);
 
 	switch (*str++) {
 	case 0:    return 0;
@@ -150,13 +148,14 @@ parse_time_time(const char *str, struct timespec *ts, const char **end)
 	default:   FAIL(EINVAL);
 	}
 
-	t = strtotime(str, end), str = *end;
-	if (errno)
-		return -1;
+	tm = strtotime(str, end), str = *end;
+	t (errno);
 	/* Do not restrict to 59, or 60, there can be more than +1 leap second. */
-	ADD(ts->tv_sec, t);
+	ADD(ts->tv_sec, tm);
 
 	return 0;
+fail:
+	return -1;
 }
 
 
@@ -176,12 +175,8 @@ static int
 parse_time_seconds(const char *str, struct timespec *ts, const char **end)
 {
 	memset(ts, 0, sizeof(*ts));
-
 	ts->tv_sec = strtotime(str, end);
-	if (errno)
-		return -1;
-
-	return 0;
+	return errno ? -1 : 0;
 }
 
 
@@ -229,13 +224,11 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 
 	/* HH:MM[:SS[.NNNNNNNNN]] or seconds? */
 	if (strchr(str, ':')) {
-		if (parse_time_time(str, ts, &end))
-			return -1;
+		t (parse_time_time(str, ts, &end));
 		adj = now.tv_sec - (now.tv_sec % ONE_DAY);
 		ADD(ts->tv_sec, adj); /* In case the HH is really large. */
 	} else {
-		if (parse_time_seconds(str + plus, ts, &end))
-			return -1;
+		t (parse_time_seconds(str + plus, ts, &end));
 	}
 	str = end;
 
@@ -269,9 +262,8 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 			FAIL(EINVAL);
 	} else if (*clk == CLOCK_REALTIME) {
 		fprintf(stderr,
-		        "%s: warning: parsing as UTC, you can avoid "
-		        "this warning by adding a 'Z' at the end of "
-		        "the time argument.\n", argv0);
+		        "%s: warning: parsing as UTC, you can avoid this warning "
+		        "by adding a 'Z' at the end of the time argument.\n", argv0);
 	}
 
 	/* Adjust the day? */
@@ -288,5 +280,7 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	}
 
 	return 0;
+fail:
+	return -1;
 }
 

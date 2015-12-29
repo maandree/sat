@@ -43,7 +43,6 @@ main(int argc, char *argv[])
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || (n && message[n - 1]));
-	shutdown(SOCK_FILENO, SHUT_RD);
 	if (n) {
 		msg_argv = restore_array(message, n, NULL);
 		t (!msg_argv);

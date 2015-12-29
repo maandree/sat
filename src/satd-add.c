@@ -47,7 +47,6 @@ main(int argc, char *argv[])
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n));
-	shutdown(SOCK_FILENO, SHUT_RD);
 	t (n < sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec));
 	n -= sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec);
 	msg_argc = *(int *)(message + n);
@@ -63,11 +62,10 @@ main(int argc, char *argv[])
 	job->n = n;
 	memcpy(job->payload, message, n);
 
-	/* Update state file. */
+	/* Update state file and run hook. */
 	t (flock(STATE_FILENO, LOCK_EX));
 	t (fstat(STATE_FILENO, &attr));
-	r = preadn(STATE_FILENO, &(job->no), sizeof(job->no), 0);
-	t (r < 0);
+	t (r = preadn(STATE_FILENO, &(job->no), sizeof(job->no), 0), r < 0);
 	if (r < (ssize_t)sizeof(job->no))
 		job->no = 0;
 	else
@@ -78,6 +76,7 @@ main(int argc, char *argv[])
 	n += sizeof(*job);
 	t (pwriten(STATE_FILENO, job, n, attr.st_size) < (ssize_t)n);
 	fsync(STATE_FILENO);
+	run_job_or_hook(job, "queued");
 	t (flock(STATE_FILENO, LOCK_UN));
 
 	DAEMON_CLEANUP_START;

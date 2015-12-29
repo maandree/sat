@@ -52,14 +52,10 @@ static volatile sig_atomic_t received_signo = 0;
 static void sighandler(int signo)
 {
 	int saved_errno = errno;
-	switch (signo) {
-	case SIGCHLD:
+	if (signo == SIGCHLD)
 		waitpid(-1, NULL, WNOHANG);
-		break;
-	default:
+	else
 		received_signo = (sig_atomic_t)signo;
-		break;
-	}
 	errno = saved_errno;
 }
 
@@ -95,8 +91,7 @@ accept_again:
 		perror(argv[0]);
 	}
 	received_signo = 0;
-	fd = accept(SOCK_FILENO, NULL, NULL);
-	if (fd == -1) {
+	if (fd = accept(SOCK_FILENO, NULL, NULL), fd == -1) {
 		switch (errno) {
 		case ECONNABORTED:
 		case EINTR:

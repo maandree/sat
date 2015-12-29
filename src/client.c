@@ -102,8 +102,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	/* Send message. */
 	t (write(fd, &cmd_, sizeof(cmd_)) < (ssize_t)sizeof(cmd_));
 	while (n) {
-		r = write(fd, msg, n);
-		t (r <= 0);
+		t (r = write(fd, msg, n), r <= 0);
 		msg += (size_t)r;
 		n -= (size_t)r;
 	}

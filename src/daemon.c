@@ -104,33 +104,29 @@ int
 readall(int fd, char **buf, size_t *n)
 {
 	char *buffer = NULL;
-	size_t ptr = 0;
-	size_t size = 0;
-	ssize_t got;
+	size_t ptr = 0, size = 0;
+	ssize_t got = 1;
 	char *new;
 	int saved_errno;
 
-	for (;;) {
+	for (; got; ptr += (size_t)got) {
 		if (ptr == size) {
-			new = realloc(buffer, size <<= 1);
-			t (!new);
+			t (!(new = realloc(buffer, size <<= 1)));
 			buffer = new;
 		}
-		got = read(fd, buffer + ptr, size - ptr);
-		t (got < 0);
-		if (got == 0)
-			break;
-		ptr += (size_t)got;
+		t (got = read(fd, buffer + ptr, size - ptr), got < 0);
 	}
 
 	new = realloc(buffer, ptr);
 	*buf = new ? new : buffer;
 	*n = ptr;
+	shutdown(SOCK_FILENO, SHUT_RD);
 	return 0;
 
 fail:
 	saved_errno = errno;
 	free(buffer);
+	shutdown(SOCK_FILENO, SHUT_RD);
 	errno = saved_errno;
 	return -1;
 }
@@ -153,20 +149,19 @@ char **
 restore_array(char *buf, size_t len, size_t *n)
 {
 	char **rc = malloc((len + 1) * sizeof(char*));
-	char **new;
+	char **new = NULL;
 	size_t i, e = 0;
 	t (!rc);
 	while (i < len) {
-		rc[++e] = buf + i;
+		rc[e++] = buf + i;
 		i += strlen(buf + i);
 	}
 	rc[e] = NULL;
 	new = realloc(rc, (e + 1) * sizeof(char*));
 	if (n)
 		*n = e;
-	return new ? new : rc;
 fail:
-	return NULL;
+	return new ? new : rc;
 }
 
 
@@ -184,12 +179,9 @@ sublist(char *const *list, size_t n)
 {
 	char **rc = malloc((n + 1) * sizeof(char*));
 	t (!rc);
-	rc[n] = NULL;
-	while (n--)
-		rc[n] = list[n];
-	return rc;
+	for (rc[n] = NULL; n--; rc[n] = list[n]);
 fail:
-	return NULL;
+	return rc;
 }
 
 
@@ -209,12 +201,11 @@ reopen(int fd, int oflag)
 	int r, saved_errno;
 
 	sprintf(path, "/dev/fd/%i", fd);
-	r = open(path, oflag);
-	if (r < 0)
+	if (r = open(path, oflag), r < 0)
 		return -1;
 	if (dup2(r, fd) == -1)
 		return saved_errno = errno, close(r), errno = saved_errno, -1;
-	close(r);
+	close(fd);
 	return 0;
 }
 
@@ -272,16 +263,14 @@ run_job_or_hook(struct job *job, const char *hook)
 	char **envp = NULL;
 	size_t argsn;
 	void *new;
-	int status = 0;
-	int saved_errno;
+	int status = 0, saved_errno;
 
 	t (!(args = restore_array(job->payload, job->n, &argsn)));
 	t (!(argv = sublist(args, (size_t)(job->argc))));
 	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc))));
 
 	if (hook) {
-		new = realloc(argv, ((size_t)(job->argc) + 3) * sizeof(*argv));
-		t (!new);
+		t (!(new = realloc(argv, ((size_t)(job->argc) + 3) * sizeof(*argv))));
 		argv = new;
 		memmove(argv + 2, argv, ((size_t)(job->argc) + 1) * sizeof(*argv));
 		argv[0] = getenv("SAT_HOOK_PATH");
@@ -297,7 +286,6 @@ run_job_or_hook(struct job *job, const char *hook)
 		environ = envp;
 		execve(*argv, argv, envp);
 		exit(1);
-		break;
 	default:
 		t (waitpid(pid, &status, 0) != pid);
 		break;
@@ -342,12 +330,10 @@ remove_job(const char *jobno, int runjob)
 
 	t (flock(STATE_FILENO, LOCK_EX));
 	t (fstat(STATE_FILENO, &attr));
-	n = (size_t)(attr.st_size);
-	while (off < n) {
+	for (n = (size_t)(attr.st_size); off < n; off += sizeof(job) + job.n) {
 		t (preadn(STATE_FILENO, &job, sizeof(job), off) < (ssize_t)sizeof(job));
 		if (!jobno || (job.no == no))
 			goto found_it;
-		off += sizeof(job) + job.n;
 	}
 	t (flock(STATE_FILENO, LOCK_UN));
 	return 0;
