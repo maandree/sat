@@ -90,11 +90,12 @@ fork_again:
 		case SAT_RUN:     image = DAEMON_PREFIX "run";   break;
 		default:
 			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
-			exit(1);
+			goto child_fail;
 		}
 		if (dup2(fd, SOCK_FILENO) != -1)
 			close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
 		perror(argv[0]);
+	child_fail:
 		close(fd);
 		exit(1);
 	default:
