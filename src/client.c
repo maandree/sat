@@ -52,12 +52,13 @@ int
 send_command(enum command cmd, size_t n, const char *restrict msg)
 {
 	struct sockaddr_un address;
-	int fd = -1, start = 1, status, goterr = 0;
+	int fd = -1, start = 1, status, outfd, goterr = 0;
 	char *dir;
 	pid_t pid;
+	ssize_t r, wrote;
+	char *buf = NULL;
+	signed char cmd_ = (signed char)cmd;
 	int saved_errno;
-	ssize_t r;
-	char cmd_ = (char)cmd;
 
 	/* Get socket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
@@ -108,8 +109,29 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	}
 	t (shutdown(fd, SHUT_WR)); /* Very important. */
 
-	/* TODO Receive. */
+	/* Receive. */
+receive_again:
+	t (r = read(fd, &cmd_, sizeof(cmd_)), r < (ssize_t)sizeof(cmd_));
+	if (r == 0)
+		goto done;
+	outfd = (int)cmd_;
+	goterr |= outfd == STDERR_FILENO;
+	t (r = read(fd, &n, sizeof(n)), r < (ssize_t)sizeof(n));
+	t (!(buf = malloc(n)));
+	while (n) {
+		t (r = read(fd, buf, n), r < 0);
+		t (errno = 0, r == 0);
+		n -= (size_t)r;
+		for (dir = buf; r;) {
+			t (wrote = write(outfd, dir, r), wrote <= 0);
+			dir += (size_t)wrote;
+			r -= (size_t)wrote;
+		}
+	}
+	free(buf), buf = NULL;
+	goto receive_again;
 
+done:
 	shutdown(fd, SHUT_RD);
 	close(fd);
 	errno = 0;
@@ -119,6 +141,7 @@ fail:
 	saved_errno = (goterr ? 0 : errno);
 	if (fd >= 0)
 		close(fd);
+	free(buf);
 	errno = saved_errno;
 	return -1;
 }
