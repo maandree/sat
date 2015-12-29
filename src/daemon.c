@@ -21,6 +21,7 @@
  */
 #include "daemon.h"
 #include <ctype.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -43,16 +44,27 @@ extern char **environ;
 #define PIO(FUN)  \
 	char *buffer = buf;  \
 	ssize_t r, n = 0;  \
+	int saved_errno = 0;  \
+	sigset_t mask, oldmask;  \
+	sigfillset(&mask);  \
+	sigprocmask(SIG_BLOCK, &mask, &oldmask);  \
 	while (nbyte) {  \
-		r = FUN(fildes, buffer, nbyte, (off_t)offset);  \
-		if (r <  0)  return -1;  \
-		if (r == 0)  break;  \
+		t (r = FUN(fildes, buffer, nbyte, (off_t)offset), r < 0);  \
+		if (r == 0)  \
+			break;  \
 		n += r;  \
 		nbyte -= (size_t)r;  \
 		offset += (size_t)r;  \
 		buffer += (size_t)r;  \
 	}  \
-	return n
+done:  \
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);  \
+	errno = saved_errno;  \
+	return n;  \
+fail:  \
+	saved_errno = errno;  \
+	n = -1;  \
+	goto done
 
 
 /**
