@@ -31,9 +31,12 @@
 
 
 /**
- * The common beginning of for all daemon pathnames.
+ * Macro that adds the common beginning of for
+ * all daemon pathnames to a string literal.
+ * 
+ * @param  name:string literal  The unique part of the pathname.
  */
-#define DAEMON_PREFIX  LIBEXECDIR "/" PACKAGE "/satd-"
+#define DAEMON_IMAGE(name)  LIBEXECDIR "/" PACKAGE "/satd-" name
 
 
 
@@ -84,10 +87,10 @@ fork_again:
 		goto fork_again;
 	case 0:
 		switch (command) {
-		case SAT_QUEUE:   image = DAEMON_PREFIX "add";   break;
-		case SAT_REMOVE:  image = DAEMON_PREFIX "rm";    break;
-		case SAT_PRINT:   image = DAEMON_PREFIX "list";  break;
-		case SAT_RUN:     image = DAEMON_PREFIX "run";   break;
+		case SAT_QUEUE:   image = DAEMON_IMAGE("add");   break;
+		case SAT_REMOVE:  image = DAEMON_IMAGE("rm");    break;
+		case SAT_PRINT:   image = DAEMON_IMAGE("list");  break;
+		case SAT_RUN:     image = DAEMON_IMAGE("run");   break;
 		default:
 			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
 			goto child_fail;
@@ -127,7 +130,7 @@ main(int argc, char *argv[], char *envp[])
 	/* The magnificent loop. */
 accept_again:
 	if (received_signo == SIGHUP) {
-		execve(DAEMON_PREFIX "diminished", argv, envp);
+		execve(DAEMON_IMAGE("diminished"), argv, envp);
 		perror(argv[0]);
 	}
 	received_signo = 0;
