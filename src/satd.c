@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/file.h>
+#include <sys/timerfd.h>
 
 
 
@@ -195,8 +196,9 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_un address;
-	int sock = -1, state = -1, foreground = 0;
+	int sock = -1, state = -1, boot = -1, real = -1, foreground = 0;
 	char *path = NULL;
+	struct itimerspec spec;
 	const char *dir;
 
 	/* Parse command line. */
@@ -222,16 +224,29 @@ main(int argc, char *argv[])
 	t (state = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRWXU), state == -1);
 	free(path), path = NULL;
 
-	/* The state fill shall be on fd STATE_FILENO. */
+	/* The state file shall be on fd STATE_FILENO. */
 	t (dup2_and_null(state, STATE_FILENO) == -1);
 	state = STATE_FILENO;
 
 	/* Create socket. */
 	t (sock = create_socket(&address), sock == -1);
-
-	/* Socket shall be on fd SOCK_FILENO. */
 	t (dup2_and_null(sock, SOCK_FILENO) == -1);
 	sock = SOCK_FILENO;
+
+	/* Create CLOCK_BOOTTIME timer. */
+	t (boot = timerfd_create(CLOCK_BOOTTIME, 0), boot == -1);
+	t (dup2_and_null(boot, BOOT_FILENO) == -1);
+	boot = BOOT_FILENO;
+
+	/* Create CLOCK_REALTIME timer. */
+	t (real = timerfd_create(CLOCK_REALTIME, 0), real == -1);
+	t (dup2_and_null(real, BOOT_FILENO) == -1);
+	real = BOOT_FILENO;
+
+	/* Configure timers. */
+	memset(&spec, 0, sizeof(spec));
+	t (timerfd_settime(boot, TFD_TIMER_ABSTIME, &spec, NULL));
+	t (timerfd_settime(real, TFD_TIMER_ABSTIME, &spec, NULL));
 
 	/* Listen for incoming conections. */
 #if SOMAXCONN < SATD_BACKLOG
@@ -241,7 +256,7 @@ main(int argc, char *argv[])
 #endif
 
 	/* Daemonise. */
-	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS, sock, -1));
+	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS, 3, 4, 5, 6, -1));
 
 	/* Change to a process image without all this initialisation text. */
 	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, address.sun_path, NULL);
@@ -254,8 +269,9 @@ fail:
 		unlink(address.sun_path);
 		close(sock);
 	}
-	if (state >= 0)
-		close(state);
+	if (state >= 0)  close(state);
+	if (boot  >= 0)  close(boot);
+	if (real  >= 0)  close(real);
 	undaemonise();
 	return 1;
 }

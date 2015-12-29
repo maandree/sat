@@ -45,6 +45,16 @@
  */
 #define STATE_FILENO  4
 
+/**
+ * The file descriptor for the CLOCK_BOOTTIME timer.
+ */
+#define BOOT_FILENO  5
+
+/**
+ * The file descriptor for the CLOCK_REALTIME timer.
+ */
+#define REAL_FILENO  6
+
 
 /**
  * Command: queue a job.

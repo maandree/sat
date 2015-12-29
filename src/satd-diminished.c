@@ -25,8 +25,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <stdint.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/select.h>
+#include <sys/timerfd.h>
 
 
 
@@ -38,12 +41,24 @@
  */
 #define DAEMON_IMAGE(name)  LIBEXECDIR "/" PACKAGE "/satd-" name
 
+/**
+ * The value on `timer_pid` when there is not "timer" image running.
+ */
+#define NO_TIMER_SPAWED  -2  /* Must be negative, but not -1. */
+
 
 
 /**
  * Signal that has been received, 0 if none.
  */
-static volatile sig_atomic_t received_signo = 0;
+static volatile sig_atomic_t received_signo = SIGCHLD; /* Forces the "timer" image to run. */
+
+/**
+ * The PID the "timer" fork, `NO_TIMER_SPAWED` if not running.
+ * 
+ * It does not matter that this is lost on a successful SIGHUP.
+ */
+static volatile pid_t timer_pid = NO_TIMER_SPAWED;
 
 
 
@@ -56,8 +71,8 @@ static void
 sighandler(int signo)
 {
 	int saved_errno = errno;
-	if (signo == SIGCHLD)
-		waitpid(-1, NULL, WNOHANG);
+	if ((signo == SIGCHLD) && (waitpid(-1, NULL, WNOHANG) == timer_pid))
+		timer_pid = NO_TIMER_SPAWED;
 	else
 		received_signo = (sig_atomic_t)signo;
 	errno = saved_errno;
@@ -67,8 +82,8 @@ sighandler(int signo)
 /**
  * Spawn a libexec.
  * 
- * @param   command  The command to spawn.
- * @param   fd       File descriptor to the socket.
+ * @param   command  The command to spawn, -1 for "timer".
+ * @param   fd       File descriptor to the socket, -1 iff `command` is -1.
  * @param   argv     `argv` from `main`.
  * @param   envp     `envp` from `main`.
  * @return           0 on success, -1 on error.
@@ -77,9 +92,10 @@ static int
 spawn(int command, int fd, char *argv[], char *envp[])
 {
 	const char *image;
+	pid_t pid;
 
 fork_again:
-	switch (fork()) {
+	switch ((pid = fork())) {
 	case -1:
 		if (errno != EAGAIN)
 			return -1;
@@ -87,23 +103,49 @@ fork_again:
 		goto fork_again;
 	case 0:
 		switch (command) {
-		case SAT_QUEUE:   image = DAEMON_IMAGE("add");   break;
-		case SAT_REMOVE:  image = DAEMON_IMAGE("rm");    break;
-		case SAT_PRINT:   image = DAEMON_IMAGE("list");  break;
-		case SAT_RUN:     image = DAEMON_IMAGE("run");   break;
+		case SAT_QUEUE:   image = DAEMON_IMAGE("add");    break;
+		case SAT_REMOVE:  image = DAEMON_IMAGE("rm");     break;
+		case SAT_PRINT:   image = DAEMON_IMAGE("list");   break;
+		case SAT_RUN:     image = DAEMON_IMAGE("run");    break;
+		case -1:          image = DAEMON_IMAGE("timer");  break;
 		default:
 			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
 			goto child_fail;
 		}
-		if (dup2(fd, SOCK_FILENO) != -1)
-			close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
+		if (command < 0) {
+			close(SOCK_FILENO);
+			execve(image, argv, envp);
+		} else {
+			close(BOOT_FILENO), close(REAL_FILENO);
+			if (dup2(fd, SOCK_FILENO) != -1)
+				close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
+		}
 		perror(argv[0]);
 	child_fail:
 		close(fd);
 		exit(1);
 	default:
+		if (command < 0)
+			timer_pid = pid;
 		return 0;
 	}
+}
+
+
+/**
+ * Determine whether a timer is set.
+ * 
+ * @param   fd  The file descriptor of the timer.
+ * @return      1 if set, 0 if unset, -1 on error.
+ */
+static int
+is_timer_set(int fd)
+{
+	struct itimerspec spec;
+	if (timerfd_gettime(fd, &spec))
+		return -1;
+	return (spec.it_interval.tv_sec  || spec.it_value.tv_sec ||
+		spec.it_interval.tv_nsec || spec.it_value.tv_nsec);
 }
 
 
@@ -120,38 +162,59 @@ fork_again:
 int
 main(int argc, char *argv[], char *envp[])
 {
-	int fd = -1, rc = 0;
-	char type;
+	int fd = -1, rc = 0, accepted = 0, r;
+	unsigned char type;
+	fd_set fdset;
+	int64_t _overrun;
 
 	/* Set up signal handlers. */
 	t (signal(SIGHUP,  sighandler) == SIG_ERR);
 	t (signal(SIGCHLD, sighandler) == SIG_ERR);
 
 	/* The magnificent loop. */
-accept_again:
+again:
+	if (accepted && (timer_pid == NO_TIMER_SPAWED)) {
+		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
+		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
+		goto done;
+	 }
+not_done:
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_IMAGE("diminished"), argv, envp);
 		perror(argv[0]);
+	} else if (received_signo == SIGCHLD) {
+		t (spawn(-1, -1, argv, envp));
 	}
 	received_signo = 0;
-	/* TODO run jobs */
+	FD_ZERO(&fdset);
+	FD_SET(SOCK_FILENO, &fdset);
+	FD_SET(BOOT_FILENO, &fdset);
+	FD_SET(REAL_FILENO, &fdset); /* This is the highest one. */
+	if (select(REAL_FILENO + 1, &fdset, NULL, NULL, NULL) == -1) {
+		t (errno != EINTR);
+	}
+	if (FD_ISSET(BOOT_FILENO, &fdset))  t (read(BOOT_FILENO, &_overrun, (size_t)8) < 8);
+	if (FD_ISSET(REAL_FILENO, &fdset))  t (read(REAL_FILENO, &_overrun, (size_t)8) < 8);
+	if (!FD_ISSET(SOCK_FILENO, &fdset))
+		goto again;
 	if (fd = accept(SOCK_FILENO, NULL, NULL), fd == -1) {
 		switch (errno) {
 		case ECONNABORTED:
 		case EINTR:
-			goto accept_again;
+			goto again;
 		default:
 			/* Including EMFILE, ENFILE, and ENOMEM
 			 * because of potential resource leak. */
 			goto fail;
 		}
 	}
-	if (read(fd, &type, sizeof(char)) <= 0)
+	accepted = 1;
+	if (read(fd, &type, sizeof(type)) <= 0)
 		perror(argv[0]);
 	else
-		t (spawn(type, fd, argv, envp));
+		t (spawn((int)type, fd, argv, envp));
 	close(fd), fd = -1;
-	goto accept_again;
+	goto again;
 
 fail:
 	perror(argv[0]);
@@ -159,6 +222,7 @@ fail:
 		close(fd);
 	rc = 1;
 done:
+	while (waitpid(-1, NULL, 0) > 0);
 	unlink(argv[1]);
 	if (!rc)
 		unlink(argv[2]);

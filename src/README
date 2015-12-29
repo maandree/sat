@@ -9,6 +9,8 @@ satd-add.c         The part of satd responding to sat, satd-diminished.c fork–
 satd-rm.c          The part of satd responding to satrm, satd-diminished.c fork–exec:s to this.
 satd-list.c        The part of satd responding to satlist, satd-diminished.c fork–exec:s to this.
 satd-run.c         The part of satd responding to satr, satd-diminished.c fork–exec:s to this.
+satd-timer.c       The part of satd responsible for running expired jobs and setting timers
+		   to wait for new expirations, satd-diminished.c fork–exec:s to this.
 
 parse_time.[ch]    Use by sat.c to parse the time argument.
                    Only rudimentary parsing is done.
