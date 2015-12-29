@@ -187,6 +187,7 @@ main(int argc, char *argv[], char *envp[])
 	int fd = -1, rc = 0, accepted = 0, r;
 	unsigned char type;
 	fd_set fdset;
+	struct stat attr;
 
 	/* Set up signal handlers. */
 	t (signal(SIGHUP,  sighandler) == SIG_ERR);
@@ -197,6 +198,11 @@ again:
 	if (accepted && (timer_pid == NO_TIMER_SPAWNED)) {
 		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
 		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
+		t (fstat(STATE_FILENO, &attr));
+		if (attr.st_size > (off_t)sizeof(size_t)) {
+			t (spawn(-1, -1, argv, envp));
+			goto not_done;
+		}
 		goto done;
 	 }
 not_done:
