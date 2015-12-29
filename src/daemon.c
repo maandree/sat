@@ -42,7 +42,6 @@ extern char **environ;
  * @param  FUN  `pread` or `pwrite`.
  */
 #define PIO(FUN)  \
-	char *buffer = buf;  \
 	ssize_t r, n = 0;  \
 	int saved_errno = 0;  \
 	sigset_t mask, oldmask;  \
@@ -79,6 +78,7 @@ fail:  \
 ssize_t
 preadn(int fildes, void *buf, size_t nbyte, size_t offset)
 {
+	char *buffer = buf;
 	PIO(pread);
 }
 
@@ -93,8 +93,9 @@ preadn(int fildes, void *buf, size_t nbyte, size_t offset)
  * @return          See pwrite(3).
  */
 ssize_t
-pwriten(int fildes, void *buf, size_t nbyte, size_t offset)
+pwriten(int fildes, const void *buf, size_t nbyte, size_t offset)
 {
+	const char *buffer = buf;
 	PIO(pwrite);
 }
 

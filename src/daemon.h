@@ -167,7 +167,7 @@ ssize_t preadn(int fildes, void *buf, size_t nbyte, size_t offset);
  * @param   offset  See pwrite(3).
  * @return          See pwrite(3).
  */
-ssize_t pwriten(int fildes, void *buf, size_t nbyte, size_t offset);
+ssize_t pwriten(int fildes, const void *buf, size_t nbyte, size_t offset);
 
 /**
  * Wrapper for `read` that reads all available data.
