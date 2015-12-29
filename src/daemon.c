@@ -296,6 +296,8 @@ run_job_or_hook(struct job *job, const char *hook)
 	case 0:
 		close(SOCK_FILENO);
 		close(STATE_FILENO);
+		close(BOOT_FILENO);
+		close(REAL_FILENO);
 		environ = envp;
 		execve(*argv, argv, envp);
 		exit(1);
