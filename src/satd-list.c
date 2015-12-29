@@ -52,8 +52,6 @@ quote(const char *str)
 	for (s = (const unsigned char *)str; *s; s++) {
 		if      (*s <  ' ')   in++;
 		else if (UNSAFE(*s))  sn++;
-		else if (*s == '"')   sn++;
-		else if (*s == '$')   sn++;
 		else if (*s == '\\')  bn++;
 		else if (*s == '\'')  qn++;
 		else                  rn++;
