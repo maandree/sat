@@ -56,16 +56,14 @@ static int
 create_socket(struct sockaddr_un *address)
 {
 	int fd = -1, bound = 0;
-	ssize_t len;
 	char *dir;
 	int saved_errno;
 
 	/* Get socket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	t (snprintf(NULL, 0, "%s/satd.socket%zn", dir, &len) == -1);
-	if ((len < 0) || ((size_t)len >= sizeof(address->sun_path)))
+	if (strlen(dir) + sizeof("/satd.socket") > sizeof(address->sun_path))
 		t ((errno = ENAMETOOLONG));
-	sprintf(address->sun_path, "%s/satd.socket", dir);
+	stpcpy(stpcpy(address->sun_path, dir), "/satd.socket");
 	address->sun_family = AF_UNIX;
 
 	/* Check that no living process owns the socket. */
@@ -205,7 +203,6 @@ main(int argc, char *argv[])
 	int sock = -1, state = -1, foreground = 0;
 	char *path = NULL;
 	char *dir;
-	ssize_t len;
 
 	/* Parse command line. */
 	if (argc > 0)  argv0 = argv[0];
@@ -232,10 +229,9 @@ main(int argc, char *argv[])
 
 	/* Open/create state file. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	t (snprintf(NULL, 0, "%s/satd.state%zn", dir, &len) == -1);
-	path = malloc(((size_t)len + 1) * sizeof(char));
+	path = malloc(strlen(dir) * sizeof(char) + sizeof("/satd.state"));
 	t (!path);
-	sprintf(path, "%s/satd.state", dir);
+	stpcpy(stpcpy(path, dir), "/satd.state");
 	state = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRWXU);
 	t (state == -1);
 	free(path), path = NULL;
