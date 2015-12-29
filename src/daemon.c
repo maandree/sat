@@ -363,7 +363,6 @@ found_it:
 	t (ftruncate(STATE_FILENO, (size_t)r + off));
 	free(buf), buf = NULL;
 	fsync(STATE_FILENO);
-	flock(STATE_FILENO, LOCK_UN);
 
 	if (runjob) {
 		run_job_or_hook(job_full, runjob == 2 ? "expired" : "forced");
@@ -378,6 +377,7 @@ found_it:
 		free(job_full);
 	}
 
+	flock(STATE_FILENO, LOCK_UN); /* Unlock late so that hooks are synchronised. */
 	return rc;
 
 fail:
