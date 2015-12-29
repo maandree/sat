@@ -149,20 +149,18 @@ accept_again:
 	close(fd), fd = -1;
 	goto accept_again;
 
+fail:
+	perror(argv[0]);
+	if (fd >= 0)
+		close(fd);
+	rc = 1;
 done:
 	unlink(argv[1]);
 	if (!rc)
 		unlink(argv[2]);
 	close(SOCK_FILENO);
 	close(STATE_FILENO);
-	return 0;
-
-fail:
-	perror(argv[0]);
-	if (fd >= 0)
-		close(fd);
-	rc = 1;
-	goto done;
+	return rc;
 
 	(void) argc;
 }
