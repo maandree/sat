@@ -19,6 +19,9 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#include "common.h"
+#include "daemon.h"
+#include "daemonise.h"
 #include <unistd.h>
 #include <errno.h>
 #include <pwd.h>
@@ -26,10 +29,6 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/file.h>
-
-#include "daemonise.h"
-#include "common.h"
-#include "daemon.h"
 
 
 

@@ -21,6 +21,7 @@
  * 
  * This file is copied from <http://github.com/maandree/slibc>.
  */
+#define _POSIX_C_SOURCE  200809L
 #include "daemonise.h"
 #include <unistd.h>
 #include <fcntl.h>

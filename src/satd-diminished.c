@@ -19,6 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#include "daemon.h"
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
@@ -26,8 +27,6 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-
-#include "daemon.h"
 
 
 

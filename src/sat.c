@@ -19,11 +19,10 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include <errno.h>
-
 #include "parse_time.h"
 #include "client.h"
 #include "common.h"
+#include <errno.h>
 
 
 

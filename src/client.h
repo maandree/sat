@@ -19,6 +19,9 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#ifndef _DEFAULT_SOURCE
+# define _DEFAULT_SOURCE
+#endif
 #include <stddef.h>
 
 
@@ -62,7 +65,6 @@ enum command {
  * @throws  0  Error at the daemon-side.
  */
 int send_command(enum command cmd, size_t n, const char *restrict msg);
-
 
 /**
  * Return the number of bytes required to store a string array.

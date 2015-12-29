@@ -19,6 +19,9 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#ifndef _DEFAULT_SOURCE
+# define _DEFAULT_SOURCE
+#endif
 #include <stddef.h>
 #include <errno.h>
 #include <string.h>
@@ -108,7 +111,7 @@ struct job {
 	/**
 	 * “argv” followed by “envp”.
 	 */
-	char payload[0];
+	char payload[];
 };
 
 
