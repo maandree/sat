@@ -65,7 +65,7 @@ usage(void)  \
  * @param  name:sitrng literal  The name of the command.
  */
 #define COMMAND(name)  \
-char *argv0 = name;
+const char *argv0 = name;
 
 
 /**

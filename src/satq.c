@@ -45,7 +45,7 @@ main(int argc, char *argv[])
 	if (argc > 0)  argv0 = argv[0];
 	if (argc > 1)  usage();
 
-	SEND(SAT_PRINT, 0, NULL);
+	SEND(SAT_PRINT, (size_t)0, NULL);
 	END(NULL);
 }
 

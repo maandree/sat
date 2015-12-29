@@ -71,7 +71,7 @@ quote(const char *str)
 				
 		}
 		break;
-	case 2:
+	default:
 		n = 4 * in + rn + sn + 2 * bn + 2 * qn + 3;
 		t (!(rc = malloc((n + 1) * sizeof(char))));
 		rc[i++] = '$';
@@ -107,9 +107,9 @@ strduration(char *buffer, time_t s)
 {
 	char *buf = buffer;
 	int seconds, minutes, hours;
-	seconds = s % 60, s /= 60;
-	minutes = s % 60, s /= 60;
-	hours   = s % 24, s /= 24;
+	seconds = (int)(s % 60), s /= 60;
+	minutes = (int)(s % 60), s /= 60;
+	hours   = (int)(s % 24), s /= 24;
 	if (s) {
 		buf += sprintf(buf, "%llid", (long long int)s);
 		buf += sprintf(buf, "%02i:", hours);
@@ -243,7 +243,7 @@ main(int argc, char *argv[])
 {
 	size_t n = 0;
 	char *message = NULL;
-	struct job **jobs;
+	struct job **jobs = NULL;
 	struct job **job;
 	DAEMON_PROLOGUE;
 

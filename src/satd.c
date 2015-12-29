@@ -56,7 +56,7 @@ static int
 create_socket(struct sockaddr_un *address)
 {
 	int fd = -1, bound = 0;
-	char *dir;
+	const char *dir;
 	int saved_errno;
 
 	/* Get socket address. */
@@ -87,7 +87,7 @@ create_socket(struct sockaddr_un *address)
 does_not_exist:
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
 	t (fchmod(fd, S_IRWXU) == -1);
-	t (bind(fd, (struct sockaddr *)address, sizeof(*address)) == -1);
+	t (bind(fd, (struct sockaddr *)address, (socklen_t)sizeof(*address)) == -1);
 	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
 	bound = 1;
 
@@ -196,9 +196,9 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_un address;
-	int sock = -1, state = -1, foreground = 0, do_not_free = 0;
+	int sock = -1, state = -1, foreground = 0;
 	char *path = NULL;
-	char *dir;
+	const char *dir;
 
 	/* Parse command line. */
 	if (argc > 0)  argv0 = argv[0];
@@ -212,11 +212,8 @@ main(int argc, char *argv[])
 		t (path =               hookpath("XDG_CONFIG_HOME", "/sat/hook"), !path && errno);
 		t (path = path ? path : hookpath("HOME", "/.config/sat/hook"),    !path && errno);
 		t (path = path ? path : hookpath(NULL, "/.config/sat/hook"),      !path && errno);
-		path = path ? path : (do_not_free = 1, "/etc/sat/hook");
-		t (setenv("SAT_HOOK_PATH", path, 1));
-		if (!do_not_free)
-			free(path);
-		path = NULL;
+		t (setenv("SAT_HOOK_PATH", path ? path : "/etc/sat/hook", 1));
+		free(path), path = NULL;
 	}
 
 	/* Open/create state file. */

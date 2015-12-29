@@ -85,10 +85,17 @@ const time_t timemax = (sizeof(time_t) == sizeof(long long int)) ? LLONG_MAX : L
 static time_t
 strtotime(const char *str, const char **end)
 {
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wcast-qual"
+#endif
 	time_t rc;
 	long long int rcll;
 	long int rcl;
 	char **end_ = (char **)end;
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 
 	if (!isdigit(*str))
 		FAIL(EINVAL);

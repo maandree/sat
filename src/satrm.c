@@ -44,7 +44,7 @@ int
 main(int argc, char *argv[])
 {
 	size_t n;
-	char *msg;
+	char *msg = NULL;
 
 	if (argc > 0)  argv0 = argv[0];
 	if (argc < 2)  usage();

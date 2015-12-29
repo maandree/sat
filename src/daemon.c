@@ -44,7 +44,7 @@ extern char **environ;
 	char *buffer = buf;  \
 	ssize_t r, n = 0;  \
 	while (nbyte) {  \
-		r = FUN(fildes, buffer, nbyte, offset);  \
+		r = FUN(fildes, buffer, nbyte, (off_t)offset);  \
 		if (r <  0)  return -1;  \
 		if (r == 0)  break;  \
 		n += r;  \
@@ -150,7 +150,7 @@ restore_array(char *buf, size_t len, size_t *n)
 {
 	char **rc = malloc((len + 1) * sizeof(char*));
 	char **new = NULL;
-	size_t i, e = 0;
+	size_t i = 0, e = 0;
 	t (!rc);
 	while (i < len) {
 		rc[e++] = buf + i;
@@ -346,7 +346,7 @@ found_it:
 	t (!(buf = malloc(n)));
 	t (r = preadn(STATE_FILENO, buf, n, off + sizeof(job) + job.n), r < 0);
 	t (pwriten(STATE_FILENO, buf, (size_t)r, off) < 0);
-	t (ftruncate(STATE_FILENO, (size_t)r + off));
+	t (ftruncate(STATE_FILENO, (off_t)r + (off_t)off));
 	free(buf), buf = NULL;
 	fsync(STATE_FILENO);
 

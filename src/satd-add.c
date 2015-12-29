@@ -65,16 +65,16 @@ main(int argc, char *argv[])
 	/* Update state file and run hook. */
 	t (flock(STATE_FILENO, LOCK_EX));
 	t (fstat(STATE_FILENO, &attr));
-	t (r = preadn(STATE_FILENO, &(job->no), sizeof(job->no), 0), r < 0);
+	t (r = preadn(STATE_FILENO, &(job->no), sizeof(job->no), (size_t)0), r < 0);
 	if (r < (ssize_t)sizeof(job->no))
 		job->no = 0;
 	else
 		job->no += 1;
-	t (pwriten(STATE_FILENO, &(job->no), sizeof(job->no), 0) < (ssize_t)sizeof(job->no));
+	t (pwriten(STATE_FILENO, &(job->no), sizeof(job->no), (size_t)0) < (ssize_t)sizeof(job->no));
 	if (attr.st_size < (off_t)sizeof(job->no))
 		attr.st_size = (off_t)sizeof(job->no);
 	n += sizeof(*job);
-	t (pwriten(STATE_FILENO, job, n, attr.st_size) < (ssize_t)n);
+	t (pwriten(STATE_FILENO, job, n, (size_t)(attr.st_size)) < (ssize_t)n);
 	fsync(STATE_FILENO);
 	run_job_or_hook(job, "queued");
 	t (flock(STATE_FILENO, LOCK_UN));

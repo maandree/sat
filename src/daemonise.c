@@ -233,7 +233,7 @@ int daemonise(const char* name, int flags, ...)
 	if ((fd > 2) && (keepmax < fd))
 	  keepmax = fd;
       va_end(args);
-      keep = calloc(keepmax + 1, sizeof(char));
+      keep = calloc((size_t)keepmax + 1, sizeof(char));
       t (keep == NULL);
       va_start(args, flags);
       while ((fd = va_arg(args, int)) >= 0)

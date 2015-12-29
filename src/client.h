@@ -72,6 +72,9 @@ int send_command(enum command cmd, size_t n, const char *restrict msg);
  * @param   array  The string array.
  * @return         The number of bytes required to store the array.
  */
+#ifdef __GNUC__
+__attribute__((__pure__))
+#endif
 size_t measure_array(char *array[]);
 
 /**
