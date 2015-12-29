@@ -190,9 +190,9 @@ int send_string(int sockfd, int outfd, ...);
 int remove_job(const char *jobno, int runjob);
 
 /**
- * Get a `NULL` terminated list of all queued jobs.
+ * Get a `NULL`-terminated list of all queued jobs.
  * 
- * @return  A `NULL` terminated list of all queued jobs. `NULL` on error.
+ * @return  A `NULL`-terminated list of all queued jobs. `NULL` on error.
  */
 struct job **get_jobs(void);
 

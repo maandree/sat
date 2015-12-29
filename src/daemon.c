@@ -20,7 +20,63 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include "daemon.h"
+#include <ctype.h>
+#include <stdarg.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 
+
+
+/**
+ * Common code for `preadn` and `pwriten`.
+ * 
+ * @param  FUN  `pread` or `pwrite`.
+ */
+#define PIO(FUN)  \
+	char *buffer = buf;  \
+	ssize_t r, n = 0;  \
+	while (nbyte) {  \
+		r = FUN(fildes, buffer, nbyte, offset);  \
+		if (r <  0)  return -1;  \
+		if (r == 0)  break;  \
+		n += r;  \
+		nbyte -= (size_t)r;  \
+		offset += (size_t)r;  \
+		buffer += (size_t)r;  \
+	}  \
+	return n
+
+
+/**
+ * Wrapper for `pread` that reads the required amount of data.
+ * 
+ * @param   fildes  See pread(3).
+ * @param   buf     See pread(3).
+ * @param   nbyte   See pread(3).
+ * @param   offset  See pread(3).
+ * @return          See pread(3), only short if the file is shorter.
+ */
+static ssize_t
+preadn(int fildes, void *buf, size_t nbyte, size_t offset)
+{
+	PIO(pread);
+}
+
+
+/**
+ * Wrapper for `pwrite` that writes all specified data.
+ * 
+ * @param   fildes  See pwrite(3).
+ * @param   buf     See pwrite(3).
+ * @param   nbyte   See pwrite(3).
+ * @param   offset  See pwrite(3).
+ * @return          See pwrite(3).
+ */
+static ssize_t
+pwriten(int fildes, void *buf, size_t nbyte, size_t offset)
+{
+	PIO(pwrite);
+}
 
 
 /**
@@ -166,8 +222,29 @@ reopen(int fd, int oflag)
 int
 send_string(int sockfd, int outfd, ...)
 {
-	return 0; /* TODO send_string */
-	(void) sockfd, (void) outfd;
+	va_list args;
+	size_t i, n = 0;
+	ssize_t r;
+	char out = (char)outfd;
+	const char *s;
+
+	va_start(args, outfd);
+	while ((s = va_arg(args, const char *)))
+		n += strlen(s);
+	va_end(args);
+
+	t (write(sockfd, &out, sizeof(out)) < (ssize_t)sizeof(out));
+	t (write(sockfd, &n, sizeof(n)) < (ssize_t)sizeof(n));
+
+	va_start(args, outfd);
+	while ((s = va_arg(args, const char *)))
+		for (i = 0, n = strlen(s); i < n; i += (size_t)r)
+			t (r = write(sockfd, s + i, n - i), r <= 0);
+	va_end(args);
+
+	return 0;
+fail:
+	return -1;
 }
 
 
@@ -183,19 +260,92 @@ send_string(int sockfd, int outfd, ...)
 int
 remove_job(const char *jobno, int runjob)
 {
-	return 0; /* TODO remove_job */
-	(void) jobno, (void) runjob;
+	char *end;
+	char *buf = NULL;
+	size_t no = 0, off = 0, n;
+	ssize_t r;
+	struct stat attr;
+	struct job job;
+	int saved_errno;
+
+	if (jobno) {
+		no = (errno = 0, strtoul)(jobno, &end, 10);
+		if (errno || *end || !isdigit(*jobno))
+			return 0;
+	}
+
+	t (flock(STATE_FILENO, LOCK_EX));
+	t (fstat(STATE_FILENO, &attr));
+	n = (size_t)(attr.st_size);
+	while (off < n) {
+		t (preadn(STATE_FILENO, &job, sizeof(job), off) < (ssize_t)sizeof(job));
+		if (!jobno || (job.no == no))
+			goto found_it;
+		off += sizeof(job) + job.n;
+	}
+	t (flock(STATE_FILENO, LOCK_UN));
+	return 0;
+
+found_it:
+	n -= off + sizeof(job) + job.n;
+	t (!(buf = malloc(n)));
+	t (r = preadn(STATE_FILENO, buf, n, off + sizeof(job) + job.n), r < 0);
+	t (pwriten(STATE_FILENO, buf, (size_t)r, off) < 0);
+	t (ftruncate(STATE_FILENO, (size_t)r + off));
+	free(buf), buf = NULL;
+	fsync(STATE_FILENO);
+	flock(STATE_FILENO, LOCK_UN);
+	if (runjob == 0)
+		return 0;
+
+	/* TODO run job (when running, remember to use PATH from the job's envp) */
+
+fail:
+	saved_errno = errno;
+	flock(STATE_FILENO, LOCK_UN);
+	free(buf);
+	errno = saved_errno;
+	return -1;
 }
 
 
 /**
- * Get a `NULL` terminated list of all queued jobs.
+ * Get a `NULL`-terminated list of all queued jobs.
  * 
- * @return  A `NULL` terminated list of all queued jobs. `NULL` on error.
+ * @return  A `NULL`-terminated list of all queued jobs. `NULL` on error.
  */
 struct job **
 get_jobs(void)
 {
-	return NULL; /* TODO get_jobs */
+	size_t off = 0, n, j = 0;
+	struct stat attr;
+	struct job **js = NULL;
+	struct job job;
+	int saved_errno;
+
+	t (flock(STATE_FILENO, LOCK_SH));
+	t (fstat(STATE_FILENO, &attr));
+	n = (size_t)(attr.st_size);
+	t (!(js = malloc((n / sizeof(**js) + 1) * sizeof(*js))));
+	while (off < n) {
+		t (preadn(STATE_FILENO, &job, sizeof(job), off) < (ssize_t)sizeof(job));
+		off += sizeof(job);
+		t (!(js[j] = malloc(sizeof(job) + sizeof(job.n))));
+		*(js[j]) = job;
+		t (preadn(STATE_FILENO, js[j++] + sizeof(job), job.n, off) < (ssize_t)(job.n));
+		off += job.n;
+	}
+	js[j] = NULL;
+	t (flock(STATE_FILENO, LOCK_UN));
+	return js;
+
+fail:
+	saved_errno = errno;
+	while (j--)
+		free(js[j]);
+	free(js);
+	flock(STATE_FILENO, LOCK_UN);
+	errno = saved_errno;
+	return NULL;
 }
 
