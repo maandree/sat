@@ -90,6 +90,7 @@ main(int argc, char *argv[], char *envp[])
 
 	/* The magnificent loop. */
 accept_again:
+	/* TODO run jobs */
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_PREFIX "diminished", argv, envp);
 		perror(argv[0]);

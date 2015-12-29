@@ -154,3 +154,48 @@ reopen(int fd, int oflag)
 	return 0;
 }
 
+
+/**
+ * Send a string to a client.
+ * 
+ * @param   sockfd  The file descriptor of the socket.
+ * @param   outfd   The file descriptor to which the client shall output the message.
+ * @param   ...     `NULL`-terminated list of string to concatenate.
+ * @return          0 on success, -1 on error.
+ */
+int
+send_string(int sockfd, int outfd, ...)
+{
+	return 0; /* TODO send_string */
+	(void) sockfd, (void) outfd;
+}
+
+
+/**
+ * Removes (and optionally runs) a job.
+ * 
+ * @param   jobno   The job number, `NULL` for any job.
+ * @param   runjob  Shall we run the job too?
+ * @return          0 on success, -1 on error.
+ * 
+ * @throws  0  The job is not in the queue.
+ */
+int
+remove_job(const char *jobno, int runjob)
+{
+	return 0; /* TODO remove_job */
+	(void) jobno, (void) runjob;
+}
+
+
+/**
+ * Get a `NULL` terminated list of all queued jobs.
+ * 
+ * @return  A `NULL` terminated list of all queued jobs. `NULL` on error.
+ */
+struct job **
+get_jobs(void)
+{
+	return NULL; /* TODO get_jobs */
+}
+

@@ -54,6 +54,7 @@ main(int argc, char *argv[])
 	t (elements < (size_t)msg_argc);
 	n += sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec);
 
+	/* TODO main */
 	(void) argv;
 
 	return 0;
