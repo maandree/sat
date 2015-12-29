@@ -20,7 +20,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include "daemon.h"
-#include <stdio.h>
 
 
 
@@ -39,18 +38,20 @@
 static char *
 quote(const char *str)
 {
-	size_t in = 0; /* < ' '             */
-	size_t sn = 0; /* = ' ', '"' or '$' */
-	size_t bn = 0; /* = '\\'            */
-	size_t qn = 0; /* = '\''            */
-	size_t rn = 0; /* other             */
+#define UNSAFE(c)  strchr(" \"$()[]{};|&^#!?*~`<>", c)
+
+	size_t in = 0; /* < ' '     */
+	size_t sn = 0; /* in UNSAFE */
+	size_t bn = 0; /* = '\\'    */
+	size_t qn = 0; /* = '\''    */
+	size_t rn = 0; /* other     */
 	size_t n, i = 0;
 	const unsigned char *s;
 	char *rc;
 
 	for (s = (const unsigned char *)str; *s; s++) {
 		if      (*s <  ' ')   in++;
-		else if (*s == ' ')   sn++;
+		else if (UNSAFE(*s))  sn++;
 		else if (*s == '"')   sn++;
 		else if (*s == '$')   sn++;
 		else if (*s == '\\')  bn++;
@@ -86,9 +87,6 @@ quote(const char *str)
 				rc[i++] = "0123456789ABCDEF"[(*s >> 4) & 15];
 				rc[i++] = "0123456789ABCDEF"[(*s >> 0) & 15];
 			}
-			else if (*s == ' ')   rc[i++] = (char)*s;
-			else if (*s == '"')   rc[i++] = (char)*s;
-			else if (*s == '$')   rc[i++] = (char)*s;
 			else if (*s == '\\')  rc[i++] = '\\', rc[i++] = (char)*s;
 			else if (*s == '\'')  rc[i++] = '\\', rc[i++] = (char)*s;
 			else                  rc[i++] = (char)*s;
