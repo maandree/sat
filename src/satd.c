@@ -56,6 +56,7 @@ static int
 create_socket(struct sockaddr_un *address)
 {
 	int fd = -1, bound = 0;
+	const void *_cvoid;
 	const char *dir;
 	int saved_errno;
 
@@ -87,7 +88,7 @@ create_socket(struct sockaddr_un *address)
 does_not_exist:
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
 	t (fchmod(fd, S_IRWXU) == -1);
-	t (bind(fd, (struct sockaddr *)address, (socklen_t)sizeof(*address)) == -1);
+	t (bind(fd, (const struct sockaddr *)(_cvoid = address), (socklen_t)sizeof(*address)) == -1);
 	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
 	bound = 1;
 

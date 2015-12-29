@@ -52,6 +52,7 @@ int
 send_command(enum command cmd, size_t n, const char *restrict msg)
 {
 	struct sockaddr_un address;
+	const void *_cvoid;
 	int fd = -1, start = 1, status, outfd, goterr = 0;
 	const char *dir;
 	pid_t pid;
@@ -97,7 +98,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 
 	/* Create socket. */
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
-	t (connect(fd, (struct sockaddr *)&address, (socklen_t)sizeof(address)) == -1);
+	t (connect(fd, (const struct sockaddr *)(_cvoid = &address), (socklen_t)sizeof(address)) == -1);
 
 	/* Send message. */
 	t (write(fd, &cmd_, sizeof(cmd_)) < (ssize_t)sizeof(cmd_));
