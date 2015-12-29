@@ -72,19 +72,17 @@ create_socket(struct sockaddr_un *address)
 	if (fd == -1) {
 		t (errno != ENOENT);
 		goto does_not_exist;
-	} else {
-		if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-			t (errno != EWOULDBLOCK);
-			fprintf(stderr, "%s: the daemon's socket file is already in use.\n", argv0);
-			errno = 0;
-			goto fail;
-		}
-		flock(fd, LOCK_UN);
-		close(fd), fd = -1;
+	} else if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
+		t (errno != EWOULDBLOCK);
+		fprintf(stderr, "%s: the daemon's socket file is already in use.\n", argv0);
+		errno = 0;
+		goto fail;
 	}
 
 	/* Create socket. */
 	unlink(address->sun_path);
+	flock(fd, LOCK_UN);
+	close(fd), fd = -1;
 does_not_exist:
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
 	t (fchmod(fd, S_IRWXU) == -1);
