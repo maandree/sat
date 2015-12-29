@@ -80,8 +80,8 @@ _CPPFLAGS = -D'PACKAGE="$(PKGNAME)"' -D'PROGRAM_VERSION="$(_VERSION)"'
 #              index.html  Invoking.html  Overview.html
 
 # Used by mk/man.mk
-#_MAN_PAGE_SECTIONS = 1
-#_MAN_1 =
+_MAN_PAGE_SECTIONS = 1
+_MAN_1 = sat
 
 # Used by mk/copy.mk
 _COPYING = COPYING
