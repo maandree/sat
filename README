@@ -20,7 +20,7 @@ RATIONALE
 	at(1) is far too complex.
 
 	sat does not do natural language time parsing, it is far too complex,
-	and locale dependent, for all programs to implemeent and should be
+	and locale dependent, for all programs to implement and should be
 	done in a separate program. Not even GNU date(1) gets this right.
 	sat does however do some trivial parsing.
 

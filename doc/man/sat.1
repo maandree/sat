@@ -1,0 +1,217 @@
+.TH SAT 1 SAT
+.SH NAME
+sat \- Queue a job for later execution.
+.SH SYNOPSIS
+.B sat
+.I TIME
+.IR COMMAND ...
+.SH DESCRIPTION
+.BR sat (1)
+is a simple implementation of
+.BR at (1).
+But is not compatible with
+.BR at (1).
+It is used to queue jobs to be executed later, outside
+the current controlling terminal.
+.PP
+.BR sat (1)
+shall launch
+.BR satd (1),
+unless it is already running, and queue a specified
+.I COMMAND
+to be executed at a selected
+.IR TIME .
+The job shall be executed with the same environment
+variables as
+.BR sat (1)
+had when the job was queued.
+.PP
+The
+.I TIME
+argument must be specified in one of four formats:
+.TP
+.IB HH : MM
+The job shall be executed the next time the clock is
+.IR HH : MM :00.
+.I HH
+may by any positive value. The time is specified in UTC.
+.TP
+.IB HH : MM : SS
+The job shall be executed the next time the clock is
+.IR HH : MM : SS .
+.I HH
+and
+.I SS
+may by any positive values. The time is specified in UTC.
+.TP
+.I S
+The job shall be executed the next time the POSIX time
+clock shows
+.IR S .
+That is,
+.I S
+seconds passed Epoch (1970-01-01 00:00:00 UTC), ignoring
+leap seconds (hence "the next time".)
+.TP
+.BI + S
+The job shall be executed in
+.I S
+seconds.
+.PP
+Nanosecond resultion in
+.I TIME
+is supported.
+.B Z
+or
+.B UTC
+can be added at the end if
+.IB HH : MM
+or
+.IB HH : MM : SS
+is used. This suppresses a warning telling you that the
+time was interpreted as UTC. It is not possible to select
+any other timezone, not even the local timezone. If the
+specified time is in the passed, but not more than 24
+hours ago, 24 hours will be added to it, and a warning
+is printed. This is so that you can use an external time
+string parser without having to worry about its behaviour
+too much.
+.PP
+If the
+.BI + S
+format is used,
+.B sat
+will use the
+.B CLOCK_BOOTTIME
+clock, for the other formats
+.B CLOCK_REALTIME
+is used. Note that this is
+.B CLOCK_BOOTTIME
+and
+.BR CLOCK_REALTIME ,
+not
+.B CLOCK_BOOTTIME_ALARM
+and
+.BR CLOCK_REALTIME_ALARM .
+If you want to the the latter clocks, you may want to
+look in the direction of
+.BR sleep-until (1).
+.PP
+The
+.B sat
+utilities can also print and edit the list of queued jobs.
+.PP
+If you are using
+.BR autohaltd (8),
+you should set up hooks for
+.BR at (1)
+that pauses
+.BR autohaltd (8)
+using
+.B SIGSTOP
+(and resume with
+.BR SIGCONT )
+when there are queued jobs. This would prevent
+.BR autohaltd (8)
+from shuting down the machine while there are queued jobs but
+no logins.
+.B sat
+cannot stop
+.BR autohaltd (8)
+by adding login entries, because
+.BR autohaltd (8)
+will only recognise them if they are in fact true logins.
+.SH OPTIONS
+None.
+.SH RATIONALE
+.BR at (1)
+is far too complex.
+.PP
+.B sat
+does not do natural language time parsing, it is far too complex,
+and locale dependent, for all programs to implement and should be
+done in a separate program. Not even GNU
+.BR date (1)
+gets this right.
+.B sat
+does however do some trivial parsing.
+.PP
+.B sat
+does not sanitise the environment. You have
+.BR env (1)
+for that. Relaying on
+.B sat
+to sanitise the environment appropriately could prove to be a
+misfortune.
+.PP
+.B sat
+does not do mailing because that is very restrictive, hooks are
+used instead.
+.PP
+.B sat
+does not do system load analysis, this should be done in a
+separate program.
+.PP
+.B sat
+only has one queue, queue can easily be emulated using dummy
+commands, for example instead of \(aqmy command\(aq, you can
+run \(aqsh -c ": QUEUE-a ; my command"\(aq.
+.PP
+.BR at (1)
+should not be merged into
+.BR cron (8).
+.BR cron (8)
+does recurring scheduled jobs,
+.BR at (1)
+does one-time unscheduled jobs.
+.BR atq (1)
+does not translate to
+.BR cron (8).
+.SH ENVIRONMENT
+.TP
+.B XDG_RUNTIME_DIR
+This environment variable names the directory in which
+interprocess communication related files are stored. If
+unset or empty, /run is used.
+.TP
+.B SAT_HOOK_PATH
+The pathname of the hook script to use. Does not have to
+already exist. If not defined, $XDG_CONFIG_HOME/sat/hook
+(if XDG_CONFIG_HOME is defined), $HOME/.config/sat/hook
+(if HOME is defined), ~/.config/sat/hook (if the user has
+a home and is not root), or /etc/sat/hook (otherwise) is
+used.
+.SH "FUTURE DIRECTIONS"
+.B sat-atcompat
+will be written to bring compatibility with old school
+.BR at (1).
+.SH NOTES
+.BR nohup (1)
+combined with
+.BR sh (1)
+and,
+.BR sleep (1)
+or
+.BR sleep-until (1)
+should be sufficient for most users.
+.PP
+.B sat
+stores the job queue in a file. However, this file does not persist
+between reboot.
+.SH "SEE ALSO"
+.BR at (1),
+.BR cron (1),
+.BR sleep-until (1),
+.BR date (1),
+.BR satq (1),
+.BR satrm (1),
+.BR satr (1),
+.BR satd (1)
+.SH AUTHORS
+Principal author, Mattias Andrée.  See the COPYING file for the full
+list of authors.
+.SH LICENSE
+MIT/Expat License.
+.SH BUGS
+Please report bugs to https://github.com/maandree/sat/issues or to
+maandree@member.fsf.org
