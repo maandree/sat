@@ -167,7 +167,7 @@
  *                 -  `DAEMONISE_KEEP_STDIN`
  *                 -  `DAEMONISE_KEEP_STDOUT`
  *                 -  `DAEMONISE_KEEP_FDS`
- * @parma   ...    Enabled if `DAEMONISE_KEEP_FDS` is used,
+ * @param   ...    Enabled if `DAEMONISE_KEEP_FDS` is used,
  *                 do not add anything if `DAEMONISE_KEEP_FDS`
  *                 is unused. This is a `-1`-terminated list
  *                 of file descritors to keep open. 0, 1, and 2

@@ -115,7 +115,7 @@ strtotime(const char *str, const char **end)
  * @param   str  The time string.
  * @param   ts   Output parameter for the POSIX time the string
  *               represents.
- * @parma   end  Output parameter for the end of the parsing of `str`.
+ * @param   end  Output parameter for the end of the parsing of `str`.
  * @return       0 on success, -1 on error.
  * 
  * @throws  EINVAL  `str` could not be parsed.
@@ -166,7 +166,7 @@ parse_time_time(const char *str, struct timespec *ts, const char **end)
  * @param   str  The time string.
  * @param   ts   Output parameter for the POSIX time the string
  *               represents.
- * @parma   end  Output parameter for the end of the parsing of `str`.
+ * @param   end  Output parameter for the end of the parsing of `str`.
  * @return       0 on success, -1 on error.
  * 
  * @throws  EINVAL  `str` could not be parsed.
