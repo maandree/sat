@@ -57,10 +57,10 @@ enum command {
  * Send a command to satd. Start satd if it is not running.
  * 
  * @param   cmd  Command type.
- * @param   n    The length of the message, 0 if `msg` is
- *               `NULL` or NUL-terminated.
+ * @param   n    The length of the message, 0 if
+ *               `msg` is `NULL` or NUL-terminated.
  * @param   msg  The message to send.
- * @return       Zero on success.
+ * @return       0 on success, -1 on error.
  * 
  * @throws  0  Error at the daemon-side.
  */

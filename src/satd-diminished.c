@@ -33,7 +33,7 @@
 /**
  * The common beginning of for all daemon pathnames.
  */
-#define DAEMON_PREFIX  LIBEXEC "/" PACKAGE "/satd-"
+#define DAEMON_PREFIX  LIBEXECDIR "/" PACKAGE "/satd-"
 
 
 

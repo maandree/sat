@@ -258,7 +258,7 @@ main(int argc, char *argv[])
 	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS, sock, -1));
 
 	/* Change to a process image without all this initialisation text. */
-	execl(LIBEXEC "/" PACKAGE "/satd-diminished", argv0, address.sun_path, NULL);
+	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, address.sun_path, NULL);
 
 fail:
 	if (errno)

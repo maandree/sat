@@ -20,7 +20,13 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include "client.h"
+#include "common.h"
 #include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/file.h>
+#include <sys/wait.h>
 
 
 
@@ -35,18 +41,87 @@ extern char *argv0;
  * Send a command to satd. Start satd if it is not running.
  * 
  * @param   cmd  Command type.
- * @param   n    The length of the message, 0 if `msg` is
- *               `NULL` or NUL-terminated.
+ * @param   n    The length of the message, 0 if
+ *               `msg` is `NULL` or NUL-terminated.
  * @param   msg  The message to send.
- * @return       Zero on success.
+ * @return       0 on success, -1 on error.
  * 
  * @throws  0  Error at the daemon-side.
  */
 int
 send_command(enum command cmd, size_t n, const char *restrict msg)
 {
-	return 0; /* TODO send_command */
-	(void) cmd, (void) n, (void) msg;
+	struct sockaddr_un address;
+	int fd = -1, start = 1, status, goterr = 0;
+	char *dir;
+	pid_t pid;
+	int saved_errno;
+	ssize_t r;
+	char cmd_ = (char)cmd;
+
+	/* Get socket address. */
+	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
+	if (strlen(dir) + sizeof("/satd.socket") > sizeof(address.sun_path))
+		t ((errno = ENAMETOOLONG));
+	stpcpy(stpcpy(address.sun_path, dir), "/satd.socket");
+	address.sun_family = AF_UNIX;
+
+	/* Any daemon listening? */
+	fd = open(address.sun_path, O_RDONLY);
+	if (fd == -1) {
+		t (errno != ENOENT);
+	} else {
+		if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
+			t (errno != EWOULDBLOCK);
+			start = 0;
+		}
+		flock(fd, LOCK_UN);
+		close(fd), fd = -1;
+	}
+
+	/* Start daemon if not running. */
+	if (start) {
+		switch ((pid = fork())) {
+		case -1:
+			goto fail;
+		case 0:
+			execl(BINDIR "/satd", BINDIR "/satd", NULL);
+			perror(argv0);
+			exit(1);
+		default:
+			t (waitpid(pid, &status, 0) != pid);
+			t (errno = 0, status);
+			break;
+		}
+	}
+
+	/* Create socket. */
+	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
+	t (connect(fd, (struct sockaddr *)&address, sizeof(address)) == -1);
+
+	/* Send message. */
+	t (write(fd, &cmd_, sizeof(cmd_)) < (ssize_t)sizeof(cmd_));
+	while (n) {
+		r = write(fd, msg, n);
+		t (r <= 0);
+		msg += (size_t)r;
+		n -= (size_t)r;
+	}
+	t (shutdown(fd, SHUT_WR)); /* Very important. */
+
+	/* TODO Receive. */
+
+	shutdown(fd, SHUT_RD);
+	close(fd);
+	errno = 0;
+	return -goterr;
+
+fail:
+	saved_errno = (goterr ? 0 : errno);
+	if (fd >= 0)
+		close(fd);
+	errno = saved_errno;
+	return -1;
 }
 
 
