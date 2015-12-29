@@ -71,11 +71,10 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	if (fd == -1) {
 		t (errno != ENOENT);
 	} else {
-		if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-			t (errno != EWOULDBLOCK);
-			start = 0;
-		}
-		flock(fd, LOCK_UN);
+		if (flock(fd, LOCK_EX | LOCK_NB) == -1)
+			t (start = 0, errno != EWOULDBLOCK);
+		else
+			flock(fd, LOCK_UN);
 		close(fd), fd = -1;
 	}
 
