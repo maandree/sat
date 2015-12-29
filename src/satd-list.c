@@ -134,7 +134,7 @@ strduration(char *buffer, time_t s)
  * @return       0 on success, -1 on error.
  */
 static int
-send_job_human(struct job* job)
+send_job_human(struct job *job)
 {
 	struct tm *tm;
 	struct timespec rem;
@@ -247,8 +247,8 @@ main(int argc, char *argv[])
 {
 	size_t n = 0;
 	char *message = NULL;
-	struct job** jobs;
-	struct job** job;
+	struct job **jobs;
+	struct job **job;
 	DAEMON_PROLOGUE;
 
 	/* Receive and validate message. */
