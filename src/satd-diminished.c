@@ -150,6 +150,28 @@ is_timer_set(int fd)
 
 
 /**
+ * If a timer has expired, unset it.
+ * 
+ * @param  fd     The file descriptor of the timer.
+ * @param  fdset  Set that shall contain `fd` iff it has expired.
+ * @return        0 on sucess, -1 on error.
+ */
+static int
+test_timer(int fd, const fd_set *fdset)
+{
+	int64_t _overrun;
+	struct itimerspec spec = {
+		.it_interval.tv_sec  = 0, .it_value.tv_sec  = 0,
+		.it_interval.tv_nsec = 0, .it_value.tv_nsec = 0,
+	};
+	if (!FD_ISSET(BOOT_FILENO, fdset))                return 0;
+	if (read(BOOT_FILENO, &_overrun, (size_t)8) < 8)  return -1;
+	if (timer_pid == NO_TIMER_SPAWED)                 return 0;
+	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &spec, NULL);
+}
+
+
+/**
  * The sat daemon.
  * 
  * @param   argc  Should be 3.
@@ -165,7 +187,6 @@ main(int argc, char *argv[], char *envp[])
 	int fd = -1, rc = 0, accepted = 0, r;
 	unsigned char type;
 	fd_set fdset;
-	int64_t _overrun;
 
 	/* Set up signal handlers. */
 	t (signal(SIGHUP,  sighandler) == SIG_ERR);
@@ -193,8 +214,8 @@ not_done:
 	if (select(REAL_FILENO + 1, &fdset, NULL, NULL, NULL) == -1) {
 		t (errno != EINTR);
 	}
-	if (FD_ISSET(BOOT_FILENO, &fdset))  t (read(BOOT_FILENO, &_overrun, (size_t)8) < 8);
-	if (FD_ISSET(REAL_FILENO, &fdset))  t (read(REAL_FILENO, &_overrun, (size_t)8) < 8);
+	t (test_timer(BOOT_FILENO, &fdset));
+	t (test_timer(REAL_FILENO, &fdset));
 	if (!FD_ISSET(SOCK_FILENO, &fdset))
 		goto again;
 	if (fd = accept(SOCK_FILENO, NULL, NULL), fd == -1) {
