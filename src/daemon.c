@@ -64,7 +64,7 @@ extern char **environ;
  * @param   offset  See pread(3).
  * @return          See pread(3), only short if the file is shorter.
  */
-static ssize_t
+ssize_t
 preadn(int fildes, void *buf, size_t nbyte, size_t offset)
 {
 	PIO(pread);
@@ -80,7 +80,7 @@ preadn(int fildes, void *buf, size_t nbyte, size_t offset)
  * @param   offset  See pwrite(3).
  * @return          See pwrite(3).
  */
-static ssize_t
+ssize_t
 pwriten(int fildes, void *buf, size_t nbyte, size_t offset)
 {
 	PIO(pwrite);
@@ -327,7 +327,7 @@ remove_job(const char *jobno, int runjob)
 {
 	char *end;
 	char *buf = NULL;
-	size_t no = 0, off = 0, n;
+	size_t no = 0, off = sizeof(size_t), n;
 	ssize_t r;
 	struct stat attr;
 	struct job job;
@@ -398,7 +398,7 @@ fail:
 struct job **
 get_jobs(void)
 {
-	size_t off = 0, n, j = 0;
+	size_t off = sizeof(size_t), n, j = 0;
 	struct stat attr;
 	struct job **js = NULL;
 	struct job job;

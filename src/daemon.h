@@ -117,6 +117,28 @@ struct job {
 
 
 /**
+ * Wrapper for `pread` that reads the required amount of data.
+ * 
+ * @param   fildes  See pread(3).
+ * @param   buf     See pread(3).
+ * @param   nbyte   See pread(3).
+ * @param   offset  See pread(3).
+ * @return          See pread(3), only short if the file is shorter.
+ */
+ssize_t preadn(int fildes, void *buf, size_t nbyte, size_t offset);
+
+/**
+ * Wrapper for `pwrite` that writes all specified data.
+ * 
+ * @param   fildes  See pwrite(3).
+ * @param   buf     See pwrite(3).
+ * @param   nbyte   See pwrite(3).
+ * @param   offset  See pwrite(3).
+ * @return          See pwrite(3).
+ */
+ssize_t pwriten(int fildes, void *buf, size_t nbyte, size_t offset);
+
+/**
  * Wrapper for `read` that reads all available data.
  * 
  * Sets `errno` to `EBADMSG` on success.
