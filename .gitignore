@@ -13,8 +13,11 @@ _/
 *.info
 *.pdf
 *.ps
+*.pdf
 *.out
 *.o
 *.gch
 *.su
+/config.status
+/Makefile
 
