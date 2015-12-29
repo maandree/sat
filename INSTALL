@@ -1,0 +1,83 @@
+Type './configure --help' for configuration options. The normal settings for a
+GNU package should work. If not, please make a bug report.
+
+	On a common GNU/Linux distribution the following should
+	be sufficient for most users:
+
+		./configure --prefix=/usr
+		make
+		make install DESTDIR="somewhere you want the files for now"
+		# Now let the package manager put the files in place...
+
+	Or for an unstaged install:
+
+		./configure --prefix=/usr
+		make
+		sudo make install
+
+By default any applicable pre-install, post-install, pre-uninstall, and
+post-install commands is run. This suppress these, run 'make' with 'N=true'
+or 'N=:'. IF you want to know which these commands are, you can use the
+methods specificed in the GNU Coding Standards. Another method is found in
+mk/README. However, for this packages, these will be:
+
+	infodir="usr/local/share/info" ## Assuming default prefix.
+	
+	post_install () {
+	  install-info -- "${infodir}/sat.info" "${infodir}/dir"
+	}
+	
+	pre_uninstall () {
+	  install-info --delete -- "${infodir}/sat.info" "${infodir}/dir"
+	}
+
+
+────────────────────────────────────────────────────────────────────────────────
+CUSTOMISED COMPILATION
+────────────────────────────────────────────────────────────────────────────────
+
+The makefile is configured to compile the C code with -O2 -g, you can
+change this by setting OPTIMISE, or with CFLAGS and LDFLAGS if you want
+to change all optional flags compiling and linking flags:
+
+	./configure OPTIMISE="-Og -g"
+
+
+────────────────────────────────────────────────────────────────────────────────
+CUSTOMISED INSTALLATION
+────────────────────────────────────────────────────────────────────────────────
+
+If you want to install absolutely everything, you can
+instead use the commands below:
+
+	make everything
+	make install-everything DESTDIR="pkg"
+
+Or if you only want to absolute basics:
+
+	make base
+	make install-base DESTDIR="pkg"
+
+You can select freely what parts of the package to install and not
+to install. This rules are available:
+
+┌─────────────┬─────────────────────┬────────────────────────────────────────────┐
+│ COMPILATION │ INSTALLATION        │ DESCRIPTION                                │
+├─────────────┼─────────────────────┼────────────────────────────────────────────┤
+│ base        │ install-base        │ Install the basics:                        │
+│   cmd       │   install-cmd       │   Install the sat commands.                │
+│             │   install-copyright │   Install the Expat License.               │
+│ doc         │ install-doc         │ Include all manuals:                       │
+│   info      │   install-info      │   Include info manual. (Texinfo)           │
+│   dvi       │   install-dvi       │   Include DVI manual. (Texinfo)            │
+│   pdf       │   install-pdf       │   Include PDF manual. (Texinfo)            │
+│   ps        │   install-ps        │   Include PostScript manual. (Texinfo)     │
+│   html      │   install-html      │   Include multifile HTML manual. (Texinfo) │
+│             │   install-man       │   Include man pages.                       │
+│ locale      │ install-locale      │ Include locales.                           │
+└─────────────┴─────────────────────┴────────────────────────────────────────────┘
+
+install, install-everything, install-base, and install-cmd, have alternatives
+that installs a stripped binary: install-strip, install-everything-strip,
+install-base-strip, and install-cmd-strip, respectively.
+

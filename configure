@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# Copyright (C) 2015  Mattias Andrée <maandree@member.fsf.org>
+# 
+# Copying and distribution of this file, with or without modification,
+# are permitted in any medium without royalty provided the copyright
+# notice and this notice are preserved.  This file is offered as-is,
+# without any warranty.
+
+
+# Run './configure --help' for usage information.
+
+
+PKGNAME=sat
+MAN_SECTION_SUFFIX=
+MAN_SECTION=1
+
+
+list_optional_features_help ()
+{
+	true
+}
+
+unrecognised_argument ()
+{
+    option="${1}"
+    case "${option}" in
+	(--build | --target | --host)
+	    incomplete="${option}" ;;
+	(--build=*)
+	    ;;
+	(--target=*)
+	    ;;
+	(--host=*)
+	    ;;
+	(*)
+	    ;;
+    esac
+}
+
+. "$(dirname "${0}")"/mk/configure
+
+
+cat <<EOF
+
+You can now run 'make && make install'.
+
+EOF
+

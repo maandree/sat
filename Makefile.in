@@ -1,0 +1,103 @@
+# Copyright (C) 2015  Mattias Andrée <maandree@member.fsf.org>
+# 
+# Copying and distribution of this file, with or without modification,
+# are permitted in any medium without royalty provided the copyright
+# notice and this notice are preserved.  This file is offered as-is,
+# without any warranty.
+
+
+### This file will be stored to Makefile once you have run ./configure. ###
+### See INSTALL for information on how to install this package.         ###
+
+
+
+# List of translations to install.
+#LOCALES =
+
+# List of man page translations to install.
+#MAN_LOCALES =
+
+# Can change these variables with ./configure in the same why you
+# would configure them when running make.
+
+
+
+##### What is below this line is configurable, but is seldom useful. #####
+
+
+# Additional options for compiling info and HTML manuals.
+INFO_FLAGS =
+
+# Additional options for compiling DVI, PDF, and PostScript manuals.
+TEXINFO_FLAGS =
+
+# The name of the package as it should be installed.
+PKGNAME = sat
+
+
+
+##### Nothing interesting below this. #####
+
+
+# In case you want add some configurations. Primarily
+# intended for maintainers. Perhaps add GPG_KEY here.
+# Of course, you can declare everthing with ./configure,
+# but with this you are less likely to forget it.
+-include .make-configurations
+
+
+# YOU, AS A USER, SHOULD NOT CHANGE THESE VARIABLES. {{
+# They specify how the reusable makefiles in mk/ shall behave.
+
+# Package information.
+_PROJECT = sat
+_VERSION = 1.0
+
+# Used by mk/lang-c.mk
+_C_STD = c99
+_PEDANTIC = yes
+_BIN = sat satq satrm satr satd
+_LIBEXEC = satd-add satd-list satd-rm satd-run satd-diminished
+_OBJ_sat = sat client parse_time
+_OBJ_satq = satq client
+_OBJ_satrm = satrm client
+_OBJ_satr = satr client
+_OBJ_satd = satd daemonise
+_OBJ_satd-add = satd-add daemon
+_OBJ_satd-list = satd-list daemon
+_OBJ_satd-rm = satd-rm daemon
+_OBJ_satd-run = satd-run daemon
+_OBJ_satd-diminished = satd-diminished
+_HEADER_DIRLEVELS = 1
+_CPPFLAGS = -D'PACKAGE="$(PKGNAME)"' -D'PROGRAM_VERSION="$(_VERSION)"'
+
+# Used by mk/texinfo.mk
+#_TEXINFO_DIRLEVELS = 2
+#_INFOPARTS = 0
+#_HAVE_TEXINFO_MANUAL = yes
+#_HTML_FILES = Free-Software-Needs-Free-Documentation.html  GNU-Free-Documentation-License.html  \
+#              index.html  Invoking.html  Overview.html
+
+# Used by mk/man.mk
+#_MAN_PAGE_SECTIONS = 1
+#_MAN_1 =
+
+# Used by mk/copy.mk
+_COPYING = COPYING
+
+# Used by mk/dist.mk
+#___EVERYTHING_INFO = sat titlepage-data content hardcopy-copying  \
+#                     appx/fdl appx/free-software-needs-free-documentation  \
+#                     chap/invoking chap/overview  \
+#                     reusable/macros reusable/paper reusable/titlepage
+___EVERYTHING_H = client common daemon daemonise parse_time
+_EVERYTHING = $(foreach F,$(___EVERYTHING_INFO),doc/info/$(F).texinfo)  \
+              $(foreach F,$(___EVERYTHING_H),src/$(F).h)  \
+              $(__EVERYTHING_ALL_COMMON) DEPENDENCIES INSTALL NEWS
+
+# }}
+
+
+# All of the make rules and the configurations.
+include $(v)mk/all.mk
+

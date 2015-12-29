@@ -1,0 +1,71 @@
+This is a collection of generic enough makefiles.
+Please feel free to use them in your project.
+
+Usage:
+	Include all.mk from your makefile.
+
+	Read the top of each file for details.
+
+	Define the variables:
+
+		_VERSION
+		This version of the package.
+
+		_PROJECT
+		The name of the project. Must only include [a-z0-9_-].
+
+		_PROJECT_FULL
+		The name of the project. May include any character.
+
+		_SRC
+		All source code files. This list is used when
+		generating the translation template file.
+
+		_COPYRIGHT_HOLDER
+		The copyright holder's full name and e-mail address.
+
+		COMMAND
+		The name of the command. Must not be declared if
+		the package does not include exactly one runnable
+		command.
+
+		PKGNAME
+		The name of the package.
+
+	Variables beginning with __ are used internally by
+	the files where they appear, or in rare cases,
+	internally between these files.
+
+	Variables beginning with _ but not __ are set in the
+	makefile to specify for these files how they should
+	behave. They should not be changed by a user of the
+	package.
+
+	Variables that do not begin with _ are configurable
+	by the user of the package.
+
+	Do no use single character variables in your Makefile.
+
+	To suppress pre-install, post-install, pre-uninstall,
+	and post-uninstall instructions, set N=true.
+	PRE_INSTALL, POST_INSTALL, PRE_UNINSTALL, and
+	POST_UNINSTALL are supportered as specified by the
+	GNU coding standardars.
+
+	To figure out what pre-install commands to run in your package, run:
+		 make -n a=% install | sed -e 's/\\$//' -e 's/^ *//' | sed -n '/^% /s/^..//p'
+
+	To figure out what post-install commands to run in your package, run:
+		 make -n z=% uninstall | sed -e 's/\\$//' -e 's/^ *//' | sed -n '/^% /s/^..//p'
+
+	To figure out what pre-uninstall commands to run in your package, run:
+		 make -n a=% uninstall | sed -e 's/\\$//' -e 's/^ *//' | sed -n '/^% /s/^..//p'
+
+	To figure out what post-uninstall commands to run in your package, run:
+		 make -n z=% uninstall | sed -e 's/\\$//' -e 's/^ *//' | sed -n '/^% /s/^..//p'
+
+	To suppress verbatim which commands Make runs,
+	set Q=@. (Excluding the period.)
+
+Developers should use DEBUG=1 when running make, when possible.
+

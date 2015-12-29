@@ -1,0 +1,732 @@
+# -*- shell-script -*-
+
+# Copyright (C) 2015  Mattias Andrée <maandree@member.fsf.org>
+# 
+# Copying and distribution of this file, with or without modification,
+# are permitted in any medium without royalty provided the copyright
+# notice and this notice are preserved.  This file is offered as-is,
+# without any warranty.
+
+
+# Run './configure --help' for usage information.
+
+
+#   FOR DEVELOPERS USING THIS SCRIPT:
+# This file is used by include this file, via the . builtin,
+# in your ./configure. Before doing so, you must declare
+#   PKGNAME=the_name_of_your_package
+#   MAN_SECTION_SUFFIX=default_suffix_to_append_to_man_page_section # (usually empty)
+#   MAN_SECTION=the_section_your_man_page_is_in # (do no declare if you do not use exacly one section)
+#   Define the function list_optional_features_help, see the help output.
+#   Define the function unrecognised_argument to deal with any unrecognised argument.
+
+
+
+# Store command for rebuilding Makefile to config.status.
+exec 10>config.status
+
+# Store configurations to .config.mk.
+exec 20>.config.mk
+
+
+# Print a quoted (if necessary) version of a string
+quote ()
+{
+    value="$1"
+    if ! test "${value%%\'*}" = "${value}"; then
+	value="'$(echo "${value}" | sed "s/'/'\\\\''/g")'"
+    elif ! test "$(printf '%s' ${value})" = "${value}"; then
+	value="'${value}'"
+    elif ! test "$(echo "${value}") | tr -d a-zA-Z0-9+_@%/=-" = ""; then
+	value="'${value}'"
+    fi
+    echo "${value}"
+}
+
+
+# Parse command line.
+incomplete=
+dashed=
+f_help=
+f_gnulinux=
+f_bin_merger=
+for option; do
+    if test -n "${incomplete}"; then
+	option="${incomplete}=${option}"
+	incomplete=
+    fi
+    
+    # For --{with{,out},{en,dis}able}-*.
+    feature="${option#--*}"
+    feature="${feature#*-}"
+    feature="$(echo "${feature}" | tr a-z- A-Z_)"
+    
+    # For directories and filename tweaks.
+    nodash=_novar
+    
+    case "${dashed}${option}" in
+# general
+	(--)
+	    dashed=yes ;;
+	(--help)
+	    f_help=yes ;;
+	(--destdir | --destdir=* | --pkgdir | --pkgdir=*)
+	    nodash=destdir ;;
+	(--srcdir | --srcdir)
+	    nodash=srcdir ;;
+
+# directory automation
+	(--gnu-linux)
+	    f_gnulinux=yes ;;
+	(--bin-merger)
+	    f_bin_merger=yes ;;
+
+# directories and filenames
+	(--prefix | --prefix=*)
+	    nodash=prefix ;;
+	(--exec-prefix | --exec-prefix=* | --exec_prefix | --exec_prefix=*)
+	    nodash=exec_prefix ;;
+	(--bindir | --bindir=*)
+	    nodash=bindir ;;
+	(--sbindir | --sbindir=*)
+	    nodash=sbindir ;;
+	(--libexecdir | --libexecdir=*)
+	    nodash=libexecdir ;;
+	(--libdir | --libdir=*)
+	    nodash=libdir ;;
+	(--includedir | --includedir=*)
+	    nodash=includedir ;;
+	(--oldincludedir | --oldincludedir=*)
+	    nodash=oldincludedir ;;
+	(--datarootdir | --datarootdir=*)
+	    nodash=datarootdir ;;
+	(--datadir | --datadir=*)
+	    nodash=datadir ;;
+	(--libdatarootdir | --libdatarootdir=*)
+	    nodash=libdatarootdir ;;
+	(--libdatadir | --libdatadir=*)
+	    nodash=libdatadir ;;
+	(--sysconfdir | --sysconfdir=*)
+	    nodash=sysconfdir ;;
+	(--sharedstatedir | --=sharedstatedir*)
+	    nodash=sharedstatedir ;;
+	(--localstatedir | --localstatedir=*)
+	    nodash=localstatedir ;;
+	(--runstatedir | --runstatedir=*)
+	    nodash=runstatedir ;;
+	(--lispdir | --lispdir=*)
+	    nodash=lispdir ;;
+	(--localedir | --localedir=*)
+	    nodash=localedir ;;
+	(--licensedir | --licensedir=*)
+	    nodash=licensedir ;;
+	(--emptydir | --emptydir=*)
+	    nodash=emptydir ;;
+	(--cachedir | --cachedir=*)
+	    nodash=cachedir ;;
+	(--spooldir | --spooldir=*)
+	    nodash=spooldir ;;
+	(--logdir | --logdir=*)
+	    nodash=logdir ;;
+	(--statedir | --statedir=*)
+	    nodash=statedir ;;
+	(--gamedir | --gamedir=*)
+	    nodash=gamedir ;;
+	(--sharedcachedir | --sharedcachedir=*)
+	    nodash=sharedcachedir ;;
+	(--sharedspooldir | --sharedspooldir=*)
+	    nodash=sharedspooldir ;;
+	(--sharedlogdir | --sharedlogdir=*)
+	    nodash=sharedlogdir ;;
+	(--sharedstatedir | --sharedstatedir=*)
+	    nodash=sharedstatedir ;;
+	(--sharedgamedir | --sharedgamedir=*)
+	    nodash=sharedgamedir ;;
+	(--tmpdir | --tmpdir=*)
+	    nodash=tmpdir ;;
+	(--localtmpdir | --localtmpdir=*)
+	    nodash=localtmpdir ;;
+	(--sharedtmpdir | --sharedtmpdir=*)
+	    nodash=sharedtmpdir ;;
+	(--lockdir | --lockdir=*)
+	    nodash=lockdir ;;
+	(--skeldir | --skeldir=*)
+	    nodash=skeldir ;;
+	(--devdir | --devdir=*)
+	    nodash=devdir ;;
+	(--sysdir | --sysdir=*)
+	    nodash=sysdir ;;
+	(--procdir | --procdir=*)
+	    nodash=procdir ;;
+	(--selfprocdir | --selfprocdir=*)
+	    nodash=selfprocdir ;;
+	(--docdir | --docdir=*)
+	    nodash=docdir ;;
+	(--infodir | --infodir=*)
+	    nodash=infodir ;;
+	(--dvidir | --dvidir=*)
+	    nodash=dvidir ;;
+	(--pdfdir | --pdfdir=*)
+	    nodash=pdfdir ;;
+	(--psdir | --psdir=*)
+	    nodash=psdir ;;
+	(--htmldir | --htmldir=*)
+	    nodash=htmldir ;;
+	(--mandir | --mandir=*)
+	    nodash=mandir ;;
+	(--man0 | --man0=*)
+	    nodash=man0 ;;
+	(--man1 | --man1=*)
+	    nodash=man1 ;;
+	(--man2 | --man2=*)
+	    nodash=man2 ;;
+	(--man3 | --man3=*)
+	    nodash=man3 ;;
+	(--man4 | --man4=*)
+	    nodash=man4 ;;
+	(--man5 | --man5=*)
+	    nodash=man5 ;;
+	(--man6 | --man6=*)
+	    nodash=man6 ;;
+	(--man7 | --man7=*)
+	    nodash=man7 ;;
+	(--man8 | --man8=*)
+	    nodash=man8 ;;
+	(--man9 | --man9=*)
+	    nodash=man9 ;;
+	(--man0ext | --man0ext=*)
+	    nodash=man0ext ;;
+	(--man1ext | --man1ext=*)
+	    nodash=man1ext ;;
+	(--man2ext | --man2ext=*)
+	    nodash=man2ext ;;
+	(--man3ext | --man3ext=*)
+	    nodash=man3ext ;;
+	(--man4ext | --man4ext=*)
+	    nodash=man4ext ;;
+	(--man5ext | --man5ext=*)
+	    nodash=man5ext ;;
+	(--man6ext | --man6ext=*)
+	    nodash=man6ext ;;
+	(--man7ext | --man7ext=*)
+	    nodash=man7ext ;;
+	(--man8ext | --man8ext=*)
+	    nodash=man8ext ;;
+	(--man9ext | --man9ext=*)
+	    nodash=man9ext ;;
+	(--manext | --manext=*)
+	    if test -n "${MAN_SECTION}"; then
+		nodash=manext
+	    else
+		printf "\e[01;31m%s: warning: ignoring: %s\e[00m\n" "${0}" "${option}" >&2
+		sleep 1
+	    fi
+	    ;;
+
+# ignored
+	# Unrecognised directories, and settings that cannot be used with internationalisation.
+	(--*dir=* | --*dir | --man?dir | --man?dir=*)
+	    printf "\e[01;31m%s: warning: ignoring: %s\e[00m\n" "${0}" "${option}" >&2
+	    sleep 1
+	    ;;
+
+# feature tweaking
+	(--with-*)
+	    feature="WITH_${feature}"
+	    echo "${feature}" = yes >&20
+	    export "${feature}"=yes
+	    option="${option}=x"
+	    ;;
+	
+	(--without-*)
+	    feature="WITHOUT_${feature}"
+	    echo "${feature}" = yes >&20
+	    export "${feature}"=yes
+	    option="${option}=x"
+	    ;;
+	
+	(--enable-*=*)
+	    param="${feature#*=}"
+	    feature="${feature%%=*}"
+	    if ! test "${param}" = "no"; then
+		feature="ENABLE_${feature}"
+	    else
+		feature="DISABLE_${feature}"
+		param=yes
+	    fi
+	    echo "${feature}" = "${param}" >&20
+	    export "${feature}"="${param}"
+	    ;;
+	
+	(--enable-*)
+	    feature="DISABLE_${feature}"
+	    echo "${feature}" = yes >&20
+	    export "${feature}"=yes
+	    option="${option}=x"
+	    ;;
+	
+	(--disable-*)
+	    feature="DISABLE_${feature}"
+	    echo "${feature}" = yes >&20
+	    export "${feature}"=yes
+	    option="${option}=x"
+	    ;;
+
+# unrecognised
+	(${dashed}--*)
+	    unrecognised_argument "${option}"
+	    ;;
+
+# variables
+	(${dashed}*=*)
+	    var="${option%%=*}"
+	    val="${option#*=}"
+	    if test -n "$(echo "${var}" | tr -d '[_a-zA-Z0-9-]')"; then
+		# Variable is not used and is potentially not
+		# formatted in a compatible way.
+		printf "\e[01;31m%s: warning: ignoring because of bad format: %s\e[00m\n" "${0}" "${option}" >&2
+		sleep 1
+	    fi
+	    echo "${var}" = "${val}" >&20
+	    ;;
+
+# unrecognised
+	(*)
+	    unrecognised_argument "${option}"
+	    ;;
+    esac
+
+    if test "${option%%=*}" = "${option}"; then
+	incomplete="${option}"
+    else
+	eval "${nodash}=$(quote "${option#*=}")"
+	eval "have_${nodash}=yes"
+    fi
+done
+
+
+# Print usage information. This is parsed by
+# the auto-completion script for ./configure.
+if test -n "${f_help}"; then
+    cat <<EOF
+Configure the package (${PKGNAME}) before building and installing.
+
+OPTIONS
+
+general
+  --help                  Print usage information.
+  --destdir=DIR           Output directory for staged install.
+  --srcdir=DIR            The directory for the sources being compiled.
+  VARIABLE=VALUE          Override a variable in the Makefile.
+
+directory automation
+  --gnu-linux             Use default configurations for GNU/Linux.
+  --bin-merger            The OS distribution has symlinked sbin to bin for the select exec-prefix.
+
+tweaking of features
+EOF
+    list_optional_features_help
+    cat <<EOF
+
+tweaking of directories and filenames
+  --prefix=DIR            Prefix used for other directories than.
+  --exec-prefix=DIR       Prefix used for /bin, /sbin, /libexec, and /lib.
+  --bindir=DIR            Executable programs that users can run.
+  --sbindir=DIR           Executable administrative programs.
+  --libexecdir=DIR        Executable programs run by other programs and not be users.
+  --libdir=DIR            Object files and libraries of object code.
+  --includedir=DIR        Header files.
+  --oldincludedir=DIR     Header files. Should have the prefix /usr if the canonical prefix is /usr/local.
+  --datarootdir=DIR       Architecture-independent data files.
+  --datadir=DIR           Architecture-independent resource files.
+  --libdatarootdir=DIR    Architecture-dependent data files.
+  --libdatadir=DIR        Architecture-dependent resource files.
+  --sysconfdir=DIR        Machine-local configuration files.
+  --sharedstatedir=DIR    Network-shared architecture-independent state files.
+  --localstatedir=DIR     Machine-local architecture-independent state files.
+  --runstatedir=DIR       Machine-local runtime state files.
+  --lispdir=DIR           Emacs LISP files.
+  --localedir=DIR         Locale-specific message catalogues.
+  --licensedir=DIR        License files.
+  --emptydir=DIR          An always empty directory.
+  --cachedir=DIR          Machine-local cached files.
+  --spooldir=DIR          Machine-local spooled files.
+  --logdir=DIR            Machine-local log files
+  --statedir=DIR          Machine-local persistent state files
+  --gamedir=DIR           Machine-local highscore files.
+  --sharedcachedir=DIR    Network-shared cached files.
+  --sharedspooldir=DIR    Network-shared spooled files.
+  --sharedlogdir=DIR      Network-shared log files
+  --sharedstatedir=DIR    Network-shared persistent state files
+  --sharedgamedir=DIR     Network-shared highscore files.
+  --tmpdir=DIR            Machine-local volatile temporary files.
+  --localtmpdir=DIR       Machine-local persistent temporary files.
+  --sharedtmpdir=DIR      Network-shared temporary files.
+  --lockdir=DIR           Lock files.
+  --skeldir=DIR           User skeleton.
+  --devdir=DIR            Devices and pseudo-devices.
+  --sysdir=DIR            System-information logical file.
+  --procdir=DIR           Process-information logical file.
+  --selfprocdir=DIR       Process-information logical file for the process itself.
+  --docdir=DIR            Documentation files, other then info manuals and man pages.
+  --infodir=DIR           Info manuals.
+  --dvidir=DIR            DVI manuals.
+  --pdfdir=DIR            PDF manuals.
+  --psdir=DIR             PostScript manuals.
+  --htmldir=DIR           HTML manuals.
+  --mandir=DIR            Top-level directory for man pages.
+  --man0=DIR              Basename of the directory for section 0 man pages.
+  --man1=DIR              Basename of the directory for section 1 man pages.
+  --man2=DIR              Basename of the directory for section 2 man pages.
+  --man3=DIR              Basename of the directory for section 3 man pages.
+  --man4=DIR              Basename of the directory for section 4 man pages.
+  --man5=DIR              Basename of the directory for section 5 man pages.
+  --man6=DIR              Basename of the directory for section 6 man pages.
+  --man7=DIR              Basename of the directory for section 7 man pages.
+  --man8=DIR              Basename of the directory for section 8 man pages.
+  --man9=DIR              Basename of the directory for section 9 man pages.
+EOF
+    if test -n "${MAN_SECTION}"; then
+	cat <<EOF
+  --manext=EXT            Filename suffix for the man page.
+EOF
+    fi
+    cat <<EOF
+  --man0ext=EXT           Filename suffix for section 0 man pages.
+  --man1ext=EXT           Filename suffix for section 1 man pages.
+  --man2ext=EXT           Filename suffix for section 2 man pages.
+  --man3ext=EXT           Filename suffix for section 3 man pages.
+  --man4ext=EXT           Filename suffix for section 4 man pages.
+  --man5ext=EXT           Filename suffix for section 5 man pages.
+  --man6ext=EXT           Filename suffix for section 6 man pages.
+  --man7ext=EXT           Filename suffix for section 7 man pages.
+  --man8ext=EXT           Filename suffix for section 8 man pages.
+  --man9ext=EXT           Filename suffix for section 9 man pages.
+EOF
+    exit 0
+fi
+
+
+# Set unset directories to their default.
+defdir ()
+{
+    p="$(quote "${2}")"
+    if ! test -n "$(eval echo '${have_'"${1}"'}')"; then
+       eval "${1}=${p}"
+    fi
+}
+if test -n "${f_gnulinux}"; then
+    defdir prefix "/usr"
+    _prefix=
+    case ${prefix} in
+	('' | /   |   /usr | /usr/  |  /games | /games  |  /usr/games | /usr/games/)
+	    _infix=
+	    ;;
+	(/usr/local  |  /usr/local/  |  /usr/local/games  |  /usr/local/games/)
+	    _infix=/local
+	    ;;
+	(/opt/*)
+	    _infix=${prefix}
+	    ;;
+	(*)
+	    # This probably means somewhere in /home, we do not
+	    # checked because we do not know what else to do.
+	    _infix=
+	    _prefix="${prefix}"
+	    ;;
+    esac
+    defdir sysconfdir "${_prefix}/etc${_infix}"
+    defdir sharedstatedir "${_prefix}/com${_infix}"
+    defdir localstatedir "${_prefix}/var${_infix}"
+    defdir runstatedir "${_prefix}/run${_infix}"
+    defdir tmpdir "${_prefix}/tmp${_infix}"
+else
+    defdir prefix "/usr/local"
+    defdir sysconfdir "${prefix}/etc"
+    defdir sharedstatedir "${prefix}/com"
+    defdir localstatedir "${prefix}/var"
+    defdir runstatedir "${localstatedir}/run"
+    defdir tmpdir "${prefix}/tmp"
+fi
+defdir exec_prefix "${prefix}"
+defdir bindir "${exec_prefix}/bin"
+if test -n "${f_bin_merger}"; then
+    defdir sbindir "${bindir}"
+else
+    defdir sbindir "${exec_prefix}/sbin"
+fi
+defdir libexecdir "${exec_prefix}/libexec"
+defdir libdir "${exec_prefix}/lib"
+defdir includedir "${prefix}/include"
+defdir oldincludedir "${includedir}"
+defdir datarootdir "${prefix}/share"
+defdir datadir "${datarootdir}"
+defdir libdatarootdir "${libdir}"
+defdir libdatadir "${libdir}"
+defdir lispdir "${datarootdir}/emacs/site-lisp"
+defdir localedir "${datarootdir}/locale"
+defdir licensedir "${datarootdir}/licenses"
+defdir cachedir "${localstatedir}/cache"
+defdir spooldir "${localstatedir}/spool"
+defdir emptydir "${localstatedir}/empty"
+defdir logdir "${localstatedir}/log"
+defdir statedir "${localstatedir}/lib"
+defdir gamedir "${localstatedir}/games"
+defdir sharedcachedir "${sharedstatedir}/cache"
+defdir sharedpooldir "${sharedstatedir}/spool"
+defdir sharedlogdir "${sharedstatedir}/log"
+defdir sharedstatedir "${sharedstatedir}/lib"
+defdir sharedgamedir "${sharedstatedir}/games"
+defdir localtmpdir "${localstatedir}/tmp"
+defdir sharedtmpdir "${sharedstatedir}/tmp"
+defdir lockdir "${runstatedir}/lock"
+defdir skeldir "${sysconfdir}/skel"
+defdir devdir "/dev"
+defdir sysdir "/sys"
+defdir procdir "/proc"
+defdir selfprocdir "${procdir}/self"
+defdir docdir "${datarootdir}/doc/${PKGNAME}"
+defdir infodir "${datarootdir}/info"
+defdir dvidir "${docdir}"
+defdir pdfdir "${docdir}"
+defdir psdir "${docdir}"
+defdir htmldir "${docdir}"
+defdir mandir "${datarootdir}/man"
+defdir man0 "man0${MAN_SECTION_SUFFIX}"
+defdir man1 "man1${MAN_SECTION_SUFFIX}"
+defdir man2 "man2${MAN_SECTION_SUFFIX}"
+defdir man3 "man3${MAN_SECTION_SUFFIX}"
+defdir man4 "man4${MAN_SECTION_SUFFIX}"
+defdir man5 "man5${MAN_SECTION_SUFFIX}"
+defdir man6 "man6${MAN_SECTION_SUFFIX}"
+defdir man7 "man7${MAN_SECTION_SUFFIX}"
+defdir man8 "man8${MAN_SECTION_SUFFIX}"
+defdir man9 "man9${MAN_SECTION_SUFFIX}"
+if test -n "${MAN_SECTION}" && ! test -n "$(eval echo '${man'"${MAN_SECTION}"'ext}')"; then
+    defdir "man${MAN_SECTION}ext" "$(eval echo '${man'"${MAN_SECTION}"'ext}')"
+fi
+defdir man0ext ".0"
+defdir man1ext ".1"
+defdir man2ext ".2"
+defdir man3ext ".3"
+defdir man4ext ".4"
+defdir man5ext ".5"
+defdir man6ext ".6"
+defdir man7ext ".7"
+defdir man8ext ".8"
+defdir man9ext ".9"
+
+# Found source directory.
+if ! test -n "${srcdir}"; then
+    if test -f "Makefile.in"; then
+	:
+    elif test -f "${PWD}/Makefile.in"; then
+	srcdir="${PWD}"
+    elif test -f "${PWD}/../Makefile.in"; then
+	srcdir="${PWD}/.."
+    fi
+fi
+if test -n "${srcdir}"; then
+    srcdir="$(realpath "${srcdir}")/"
+    srcdir_proper="${srcdir}"
+    srcdir="$(quote "${srcdir}")"
+fi
+if ! test -f "${srcdir_proper}Makefile.in"; then
+    echo "${0}: error: cannot found source directory."
+    exit 1
+fi
+
+
+# Add shebang and "generated"-comment to config.status.
+echo '#!/bin/sh' >&10
+echo >&10
+echo '# This file was generated by ./configure, its purpose is two-fold:' >&10
+echo '# 1) It lets you rebuild Makefile with the same configurations you' >&10
+echo '#    used last time you run ./configure.' >&10
+echo '# 2) It lets Makefile rebuild itself transparently when out of date.' >&10
+echo >&10
+
+# config.status should adjust CWD.
+echo 'cd "$(dirname "${0}")"' >&10
+
+# config.status calls ./configure with all arguments you called ./configure.
+printf "exec %s" "${0}" >&10
+for option; do
+    printf " %s" "$(quote "${option}")" >&10
+done
+echo >&10
+
+# Close config.status.
+exec 10>&-
+
+
+# Store environment (with restrictions).
+env | while read line; do
+    var="${line%%=*}"
+    val="${line#*=}"
+    if test "${var}" = "${line}"; then
+	# Malformated variables. (Can happen!, sigh...)
+	continue
+    elif test -n "$(echo "${var}" | tr -d '[_a-zA-Z0-9-]')"; then
+	# Variable is not used and is potentially not
+	# formatted in a compatible way.
+	continue
+    fi
+    case "${var}" in
+	(_ | PWD | SHELL | SHLVL | TERM | COLORTERM | MAKEFLAGS)
+	    # We do not want to propagate these.
+	    ;;
+	(*)
+	    echo "${var}" = "${val}" >&20
+	    ;;
+    esac
+done
+
+# Store directories and filenames.
+if test -n "${destdir}"; then
+   echo DESTDIR = "${destdir}" >&20
+fi
+echo PREFIX = "${prefix}" >&20
+echo SYSCONFDIR = "${sysconfdir}" >&20
+echo COMDIR = "${sharedstatedir}" >&20
+echo VARDIR = "${localstatedir}" >&20
+echo RUNDIR = "${runstatedir}" >&20
+echo TMPDIR = "${tmpdir}" >&20
+echo DEVDIR = "${devdir}" >&20
+echo SYSDIR = "${sysdir}" >&20
+echo PROCDIR = "${procdir}" >&20
+echo EXEC_PREFIX = "${exec_prefix}" >&20
+echo BINDIR = "${bindir}" >&20
+echo SBINDIR = "${sbindir}" >&20
+echo LIBEXECDIR = "${libexecdir}" >&20
+echo LIBDIR = "${libdir}" >&20
+echo INCLUDEDIR = "${includedir}" >&20
+echo OLDINCLUDEDIR = "${oldincludedir}" >&20
+echo DATADIR = "${datarootdir}" >&20
+echo RESDIR = "${datadir}" >&20
+echo SYSDEPDATADIR = "${libdatarootdir}" >&20
+echo SYSDEPRESDIR = "${libdatadir}" >&20
+echo LISPDIR = "${lispdir}" >&20
+echo LOCALEDIR = "${localedir}" >&20
+echo LICENSEDIR = "${licensedir}" >&20
+echo CACHEDIR = "${cachedir}" >&20
+echo SPOOLDIR = "${spooldir}" >&20
+echo EMPTYDIR = "${emptydir}" >&20
+echo LOGDIR = "${logdir}" >&20
+echo STATEDIR = "${statedir}" >&20
+echo GAMEDIR = "${gamedir}" >&20
+echo COMCACHEDIR = "${sharedcachedir}" >&20
+echo COMPOOLDIR = "${sharedpooldir}" >&20
+echo COMLOGDIR = "${sharedlogdir}" >&20
+echo COMSTATEDIR = "${sharedstatedir}" >&20
+echo COMGAMEDIR = "${sharedgamedir}" >&20
+echo LOCALTMPDIR = "${localtmpdir}" >&20
+echo SHAREDTMPDIR = "${sharedtmpdir}" >&20
+echo LOCKDIR = "${lockdir}" >&20
+echo SKELDIR = "${skeldir}" >&20
+echo SELFPROCDIR = "${selfprocdir}" >&20
+echo DOCDIR = "${docdir}" >&20
+echo INFODIR = "${infodir}" >&20
+echo DVIDIR = "${dvidir}" >&20
+echo PDFDIR = "${pdfdir}" >&20
+echo PSDIR = "${psdir}" >&20
+echo HTMLDIR = "${htmldir}" >&20
+echo MANDIR = "${mandir}" >&20
+echo MAN0 = "${man0}" >&20
+echo MAN1 = "${man1}" >&20
+echo MAN2 = "${man2}" >&20
+echo MAN3 = "${man3}" >&20
+echo MAN4 = "${man4}" >&20
+echo MAN5 = "${man5}" >&20
+echo MAN6 = "${man6}" >&20
+echo MAN7 = "${man7}" >&20
+echo MAN8 = "${man8}" >&20
+echo MAN9 = "${man9}" >&20
+echo MAN0EXT = "${man0ext}" >&20
+echo MAN1EXT = "${man1ext}" >&20
+echo MAN2EXT = "${man2ext}" >&20
+echo MAN3EXT = "${man3ext}" >&20
+echo MAN4EXT = "${man4ext}" >&20
+echo MAN5EXT = "${man5ext}" >&20
+echo MAN6EXT = "${man6ext}" >&20
+echo MAN7EXT = "${man7ext}" >&20
+echo MAN8EXT = "${man8ext}" >&20
+echo MAN9EXT = "${man9ext}" >&20
+
+# Close .config.mk.
+exec 20>&-
+
+# Now, make Makefile available.
+if test -f Makefile; then
+    chmod u+w Makefile # This scripts makes it read-only.
+fi
+exec 30>Makefile
+echo "# ----------------------------------------------------- #" >&30
+echo "# This file was created by ./configure from Makefile.in #" >&30
+echo "# ----------------------------------------------------- #" >&30
+echo >&30
+if test -n "${srcdir}"; then
+   echo v = "${srcdir}" >&30
+fi 
+cat "${srcdir_proper}"Makefile.in >&30
+exec 30>&-
+
+
+# config.status should be executable.
+chmod a+x config.status
+
+# Makefile should be read-only to ones does not edit it by mistake.
+chmod a-w Makefile
+
+
+# Help functions for the parent script.
+test_with ()
+{
+    with="$(eval echo '${WITH_'"${1}"'}')"
+    without="$(eval echo '${WITHOUT_'"${1}"'}')"
+    if ! test -n "${with}" && ! test -n "${without}"; then
+	echo "${2}"
+    elif ! test -n "${with}" && test -n "${without}"; then
+	echo "no"
+    elif test -n "${with}" && ! test -n "${without}"; then
+	echo "yes"
+    elif test "${2}" = yes; then
+	echo "no"
+    else
+	echo "yes"
+    fi
+}
+test_enable ()
+{
+    enable="$(eval echo '${ENABLE_'"${1}"'}')"
+    disable="$(eval echo '${DISABLE_'"${1}"'}')"
+    if ! test -n "${enable}" && ! test -n "${disable}"; then
+	echo "${2}"
+    elif ! test -n "${enable}" && test -n "${disable}"; then
+	echo "no"
+    elif test -n "${enable}" && ! test -n "${disable}"; then
+	echo "${enable}"
+    elif test "${2}" = yes ; then
+	echo "no"
+    else
+	echo "${enable}"
+    fi
+}
+
+
+# After including this file, you may want
+# to do something like:
+#
+#   cat <<EOF
+#   
+#   Enabled features, see ${0} for more infomation:
+#   
+#       Internationalisation     $(test_with GETTEXT yes)
+#       GNU Bash tab-completion  $(test_with BASH yes)
+#       Fish tab-completion      $(test_with FISH yes)
+#       Z shell tab-completion   $(test_with ZSH yes)
+#   
+#   You can now run 'make && make install'.
+#   
+#   EOF
+

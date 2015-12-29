@@ -1,3 +1,20 @@
-libc
-linux>=2.6.39 (Or any system that has CLOCK_BOOTTIME)
+RUNTIME DEPENDENCIES:
+
+	libc
+	linux>=2.6.39 (Or any system that has CLOCK_BOOTTIME)
+
+
+BUILD DEPENDENCIES:
+
+	libc
+	linux>=2.6.39 (Or any system that has CLOCK_BOOTTIME)
+	c99
+	make
+	coreutils
+
+
+INSTALL DEPENDENCIES:
+
+	make
+	coreutils
 
