@@ -58,6 +58,7 @@ done:
 	/* Cleanup. */
 	shutdown(SOCK_FILENO, SHUT_WR);
 	close(SOCK_FILENO);
+	close(STATE_FILENO);
 	free(msg_argv);
 	free(message);
 	return rc;

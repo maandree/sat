@@ -267,6 +267,7 @@ done:
 	/* Cleanup. */
 	shutdown(SOCK_FILENO, SHUT_WR);
 	close(SOCK_FILENO);
+	close(STATE_FILENO);
 	for (job = jobs; *job; job++)
 		free(*job);
 	free(jobs);
