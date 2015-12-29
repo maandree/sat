@@ -50,7 +50,6 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 }
 
 
-
 /**
  * Return the number of bytes required to store a string array.
  * 
