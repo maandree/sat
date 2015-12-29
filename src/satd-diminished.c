@@ -49,7 +49,8 @@ static volatile sig_atomic_t received_signo = 0;
  * 
  * @param  int  The signal.
  */
-static void sighandler(int signo)
+static void
+sighandler(int signo)
 {
 	int saved_errno = errno;
 	if (signo == SIGCHLD)
@@ -59,6 +60,47 @@ static void sighandler(int signo)
 	errno = saved_errno;
 }
 
+
+/**
+ * Spawn a libexec.
+ * 
+ * @param   command  The command to spawn.
+ * @param   fd       File descriptor to the socket.
+ * @param   argv     `argv` from `main`.
+ * @param   envp     `envp` from `main`.
+ * @return           0 on success, -1 on error.
+ */
+static int
+spawn(int command, int fd, char *argv[], char *envp[])
+{
+	const char *image;
+
+fork_again:
+	switch (fork()) {
+	case -1:
+		if (errno != EAGAIN)
+			return -1;
+		(void) sleep(1); /* Possibly shorter because of SIGCHLD. */
+		goto fork_again;
+	case 0:
+		switch (command) {
+		case SAT_QUEUE:   image = DAEMON_PREFIX "add";   break;
+		case SAT_REMOVE:  image = DAEMON_PREFIX "rm";    break;
+		case SAT_PRINT:   image = DAEMON_PREFIX "list";  break;
+		case SAT_RUN:     image = DAEMON_PREFIX "run";   break;
+		default:
+			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
+			exit(1);
+		}
+		if (dup2(fd, SOCK_FILENO) != -1)
+			close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
+		perror(argv[0]);
+		close(fd);
+		exit(1);
+	default:
+		return 0;
+	}
+}
 
 
 /**
@@ -75,22 +117,20 @@ int
 main(int argc, char *argv[], char *envp[])
 {
 	int fd = -1, rc = 0;
-	pid_t pid;
 	char type;
-	const char *image;
 
 	/* Set up signal handlers. */
-	if (signal(SIGHUP,  sighandler) == SIG_ERR)  goto fail;
-	if (signal(SIGCHLD, sighandler) == SIG_ERR)  goto fail;
+	t (signal(SIGHUP,  sighandler) == SIG_ERR);
+	t (signal(SIGCHLD, sighandler) == SIG_ERR);
 
 	/* The magnificent loop. */
 accept_again:
-	/* TODO run jobs */
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_PREFIX "diminished", argv, envp);
 		perror(argv[0]);
 	}
 	received_signo = 0;
+	/* TODO run jobs */
 	if (fd = accept(SOCK_FILENO, NULL, NULL), fd == -1) {
 		switch (errno) {
 		case ECONNABORTED:
@@ -102,36 +142,10 @@ accept_again:
 			goto fail;
 		}
 	}
-	if (read(fd, &type, sizeof(char)) <= 0) {
+	if (read(fd, &type, sizeof(char)) <= 0)
 		perror(argv[0]);
-		goto connection_done;
-	}
-fork_again:
-	switch ((pid = fork())) {
-	case -1:
-		if (errno != EAGAIN)
-			goto fail;
-		(void) sleep(1); /* Possibly shorter because of SIGCHLD. */
-		goto fork_again;
-	case 0:
-		switch (type) {
-		case SAT_QUEUE:   image = DAEMON_PREFIX "add";   break;
-		case SAT_REMOVE:  image = DAEMON_PREFIX "rm";    break;
-		case SAT_PRINT:   image = DAEMON_PREFIX "list";  break;
-		case SAT_RUN:     image = DAEMON_PREFIX "run";   break;
-		default:
-			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
-			exit(1);
-		}
-		if (dup2(fd, SOCK_FILENO) != -1)
-			close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
-		perror(argv[0]);
-		close(fd);
-		exit(1);
-	default:
-		break;
-	}
-connection_done:
+	else
+		t (spawn(type, fd, argv, envp));
 	close(fd), fd = -1;
 	goto accept_again;
 
