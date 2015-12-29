@@ -26,10 +26,9 @@
 /**
  * Subroutine to the sat daemon: remove jobs.
  * 
- * @param   argc  Should be 4.
+ * @param   argc  Should be 3.
  * @param   argv  The name of the process, the pathname of the socket,
- *                the pathname to the state file, and $SAT_HOOK_PATH
- *                (the pathname of the hook-script.)
+ *                and the pathname to the state file.
  * @return  0     The process was successful.
  * @return  1     The process failed queuing the job.
  */
@@ -42,7 +41,7 @@ main(int argc, char *argv[])
 	char **arg;
 	int rc = 0;
 
-	assert(argc == 4);
+	assert(argc == 3);
 	t (reopen(STATE_FILENO, O_RDWR));
 
 	/* Receive and validate message. */

@@ -182,7 +182,7 @@ int send_string(int sockfd, int outfd, ...);
  * Removes (and optionally runs) a job.
  * 
  * @param   jobno   The job number, `NULL` for any job.
- * @param   runjob  Shall we run the job too?
+ * @param   runjob  Shall we run the job too? 2 if its time has expired (not forced).
  * @return          0 on success, -1 on error.
  * 
  * @throws  0  The job is not in the queue.

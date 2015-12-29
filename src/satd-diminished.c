@@ -68,10 +68,9 @@ static void sighandler(int signo)
 /**
  * The sat daemon.
  * 
- * @param   argc  Should be 4.
+ * @param   argc  Should be 3.
  * @param   argv  The name of the process, the pathname of the socket,
- *                the pathname to the state file, and $SAT_HOOK_PATH
- *                (the pathname of the hook-script.)
+ *                and the pathname to the state file.
  * @param   envp  The environment.
  * @return  0     The process was successful.
  * @return  1     The process failed queuing the job.

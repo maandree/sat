@@ -24,6 +24,14 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/wait.h>
+
+
+
+/**
+ * The environment.
+ */
+extern char **environ;
 
 
 
@@ -249,10 +257,67 @@ fail:
 
 
 /**
+ * Run a job or a hook.
+ * 
+ * @param   job   The job.
+ * @param   hook  The hook, `NULL` to run the job.
+ * @return        0 on success, -1 on error, 1 if the child failed.
+ */
+static int
+run_job_or_hook(struct job *job, const char *hook)
+{
+	pid_t pid;
+	char **args = NULL;
+	char **argv = NULL;
+	char **envp = NULL;
+	size_t argsn;
+	void *new;
+	int status = 0;
+	int saved_errno;
+
+	t (!(args = restore_array(job->payload, job->n, &argsn)));
+	t (!(argv = sublist(args, (size_t)(job->argc))));
+	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc))));
+
+	if (hook) {
+		new = realloc(argv, ((size_t)(job->argc) + 3) * sizeof(*argv));
+		t (!new);
+		argv = new;
+		memmove(argv + 2, argv, ((size_t)(job->argc) + 1) * sizeof(*argv));
+		argv[0] = getenv("SAT_HOOK_PATH");
+		argv[1] = strstr(hook, hook); /* strstr: just to remove a warning */
+	}
+
+	switch ((pid = fork())) {
+	case -1:
+		goto fail;
+	case 0:
+		close(SOCK_FILENO);
+		close(STATE_FILENO);
+		environ = envp;
+		execve(*argv, argv, envp);
+		exit(1);
+		break;
+	default:
+		t (waitpid(pid, &status, 0) != pid);
+		break;
+	}
+
+fail:
+	saved_errno = errno;
+	free(args);
+	free(argv);
+	free(envp);
+	errno = saved_errno;
+	return status ? 1 : -!!saved_errno;
+}
+
+
+/**
  * Removes (and optionally runs) a job.
  * 
  * @param   jobno   The job number, `NULL` for any job.
- * @param   runjob  Shall we run the job too?
+ * @param   runjob  Shall we run the job too? 2 if its time has expired (not forced).
  * @return          0 on success, -1 on error.
  * 
  * @throws  0  The job is not in the queue.
@@ -266,7 +331,8 @@ remove_job(const char *jobno, int runjob)
 	ssize_t r;
 	struct stat attr;
 	struct job job;
-	int saved_errno;
+	struct job *job_full = NULL;
+	int rc = 0, saved_errno;
 
 	if (jobno) {
 		no = (errno = 0, strtoul)(jobno, &end, 10);
@@ -287,6 +353,9 @@ remove_job(const char *jobno, int runjob)
 	return 0;
 
 found_it:
+	job_full = malloc(sizeof(job) + job.n);
+	*job_full = job;
+	t (preadn(STATE_FILENO, job_full->payload, job.n, off) < (ssize_t)(job.n));
 	n -= off + sizeof(job) + job.n;
 	t (!(buf = malloc(n)));
 	t (r = preadn(STATE_FILENO, buf, n, off + sizeof(job) + job.n), r < 0);
@@ -295,15 +364,27 @@ found_it:
 	free(buf), buf = NULL;
 	fsync(STATE_FILENO);
 	flock(STATE_FILENO, LOCK_UN);
-	if (runjob == 0)
-		return 0;
 
-	/* TODO run job (when running, remember to use PATH from the job's envp) */
+	if (runjob) {
+		run_job_or_hook(job_full, runjob == 2 ? "expired" : "forced");
+		rc = run_job_or_hook(job_full, NULL);
+		saved_errno = errno;
+		run_job_or_hook(job_full, rc ? "failure" : "success");
+		rc = rc == 1 ? 0 : rc;
+		free(job_full);
+		errno = saved_errno;
+	} else {
+		run_job_or_hook(job_full, "removed");
+		free(job_full);
+	}
+
+	return rc;
 
 fail:
 	saved_errno = errno;
 	flock(STATE_FILENO, LOCK_UN);
 	free(buf);
+	free(job_full);
 	errno = saved_errno;
 	return -1;
 }
@@ -332,7 +413,7 @@ get_jobs(void)
 		off += sizeof(job);
 		t (!(js[j] = malloc(sizeof(job) + sizeof(job.n))));
 		*(js[j]) = job;
-		t (preadn(STATE_FILENO, js[j++] + sizeof(job), job.n, off) < (ssize_t)(job.n));
+		t (preadn(STATE_FILENO, js[j++]->payload, job.n, off) < (ssize_t)(job.n));
 		off += job.n;
 	}
 	js[j] = NULL;
