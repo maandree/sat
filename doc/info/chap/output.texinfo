@@ -1,5 +1,66 @@
 @node Output
 @chapter Output
 
-TODO
+@command{satq} is the only command with any output apart from
+warnings and error messages printed to standard error.
+
+@command{satq}'s output to standard output, is a list of all
+jobs queued for later execution. Each job in the queue is
+separated by one empty line (@code{LF}@tie{}@code{LF}), there
+is a empty line at the end of the output too. Each job is
+printed on multiple lines, where all but the first line is
+indented with two blank spaces. The first line is not indented.
+The output for each job is formatted
+@example
+job: JOB-ID clock: CLOCK argc: ARGC remaining: REM argv[0]: ARGV0
+  time: TIME
+  argv: ARGV
+  envp: ENVP
+@end example
+@noindent
+where
+@table @code
+@item JOB-ID
+is a the ID of the job. This is a non-negative integer.
+
+@item CLOCK
+is either @code{walltime} or @code{boottime}.
+
+@item ARGC
+is the number of arguments in the job's command line,
+including the command itself. This is a positive integer.
+
+@item REM
+is the remaining time until the job is executed. This is
+formatted either as @code{[DAYSd[HOURS:[MINUTES:]]]SECONDS.NANOSECONDS}
+where @code{DAYS}, @code{HOURS}, and @code{MINUTES} are
+only included if non-zero or a higher-valued variable is
+included. The first included uses as few digits as
+possible, the others uses two digits, this is true for
+@code{SECONDS} too. @code{NANOSECONDS} is always in nine
+digits.
+
+@item ARGV0
+is the first argument in the job's command line, that is,
+the command that will be executed. This field, in contrast
+to the eailer, may contain spaces. However it will be
+quoted, if necessary, in manner so that it can be pasted
+to the shell and run.
+
+@item TIME
+is the time the job will be executed. If the @code{CLOCK}
+is @code{boottime}, this is formatted in the say way as
+@code{REM}. If @code{CLOCK} is @code{walltime}, it is
+formatted @code{YEAR-MM-DD HH:MM:SS} in 24-hour clock,
+local time.
+
+@item ARGV
+is all arguments in the job's command line, including
+@code{ARGV0}. Each argument is quoted as necssary.
+
+@item ENVP
+is all environment variables. Each entry is quoted if
+necessary so it can be pasted to the shell and used
+with @command{env}.
+@end table
 
