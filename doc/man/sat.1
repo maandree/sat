@@ -104,7 +104,7 @@ utilities can also print and edit the list of queued jobs.
 If you are using
 .BR autohaltd (8),
 you should set up hooks for
-.BR at (1)
+.BR sat
 that pauses
 .BR autohaltd (8)
 using
@@ -113,7 +113,7 @@ using
 .BR SIGCONT )
 when there are queued jobs. This would prevent
 .BR autohaltd (8)
-from shuting down the machine while there are queued jobs but
+from shutting down the machine while there are queued jobs but
 no logins.
 .B sat
 cannot stop
