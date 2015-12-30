@@ -60,3 +60,10 @@ and @code{CLOCK_BOOTTIME_ALARM}, if you need those
 clocks, you can use the less powerful @command{sleep-until}
 which supports all clocks your operating system supports.
 
+@command{sat} is written to waste as little memory
+as possible. I hate excessively programs that do not
+do anything, if we are going to add more and more
+daemons, all wasting more and more memory will we
+never be about to get rid of swap and use strict
+commit accounting on machines with very little memory.
+
