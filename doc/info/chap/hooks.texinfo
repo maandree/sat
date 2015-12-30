@@ -38,7 +38,7 @@ is to use the script
 #!/bin/sh
 action="$1"
 shift 1
-exec wall -n "sat: $action $JOBNAME ($*)"
+exec wall -n "sat: $action: $JOBNAME ($*)"
 @end example
 @noindent
 and always set the environment variable @env{JOBNAME}
