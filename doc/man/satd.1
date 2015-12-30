@@ -10,6 +10,42 @@ shall start the
 .B sat
 daemon, which is used for automatically executing jobs
 queued for later execution.
+.PP
+Before a job is executed,
+.BR satd (1)
+will run the hook script if available, the hook action
+will either be
+.TP
+.B expired
+if the job run when scheduled to run, or
+.TP
+.B forced
+if
+.BR satr (1)
+was used to run the job early.
+.PP
+After the job has run, the hook script is run again,
+and is made sure that the hook script is not run any
+time between these two runs. This time, the action is
+either
+.TP
+.B failure
+if the job was not executed successfully, including if
+the job exited with any status other than zero, or
+.B success
+if the job was executed successfully and exited with
+status zero.
+.PP
+When a job is removed using
+.BR satrm (1),
+the hook script is run with the action
+.BR removed .
+.PP
+When the hook script runs, the first argument (not
+counting the zeroth argument: the pathname of hook
+script) is the action, the follow arguments is the
+command line of the job. The environment will be set
+to be identical to that of the job.
 .SH OPTIONS
 .TP
 .B \-f
