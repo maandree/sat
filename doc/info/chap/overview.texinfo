@@ -1,5 +1,50 @@
 @node Overview
 @chapter Overview
 
-TODO TODO TODO TODO TODO TODO TODO TODO
+@command{sat} is a simple alternative to @command{at}.
+It implements the basic features of at @command{at}
+in a sane less harmful way. It is hence by itself
+incompatible with @command{at}.
+
+@command{sat} is used to queue jobs for later execution.
+It is daemon-based, the deamon being @command{satd}, and
+using @command{satq}, @command{satrm}, and @command{satr}
+you can list queued jobs, remove queued jobs, and run
+queued jobs early, respectively. @command{satd} is launched
+automatically and exits automatically when it has nothing
+more to do.
+
+If you are using @command{autohaltd}, you should set up
+hooks for @command{sat} that pauses @command{autohaltd}
+using @code{SIGSTOP} (and resume with @code{SIGCONT})
+when there are queued jobs. This would prevent
+@command{autohaltd} from shutting down the machine
+while there are queued jobs but no logins. @command{sat}
+cannot stop @command{autohaltd} by adding login entries,
+because @command{autohaltd} will only recognise them if
+they are in fact true logins.
+
+@command{sat} was written because @command{at} is far
+too complex and has a lot of issues. @command{at}
+sanitises the environment, @command{sat} does not do
+this because you can do this with @command{env}, and
+you will not lose environment variable that you my
+want to keep, which sometimes happens with @command{at}.
+@command{at} also do mailing, @command{sat} instead
+lets you implement this with hooks, so that it is
+less complex and less restrictive. @command{at} does
+system load analysis, which @command{sat} does not,
+instead you can use an external program for this.
+@command{sat} also only has one queue, because you
+do not need more than one queue, queues can easily
+be emulated. Finally, the authors of @command{at} had
+the brave idea to do natural language parsing,
+@footnote{Good luck getting that to work properly
+for even just English!} @command{sat} does however
+do trivial parsing.
+
+Some think that @command{at} shall be merge into
+@command{cron}. The authors of @command{sat} does
+not think so because it is two wilding different
+kind of job scheduling.
 
