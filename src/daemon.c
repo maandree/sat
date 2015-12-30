@@ -287,7 +287,7 @@ run_job_or_hook(struct job *job, const char *hook)
 		argv = new;
 		memmove(argv + 2, argv, ((size_t)(job->argc) + 1) * sizeof(*argv));
 		argv[0] = getenv("SAT_HOOK_PATH");
-		argv[1] = strstr(hook, hook); /* strstr: just to remove a warning */
+		argv[1] = (strstr)(hook, hook); /* strstr: just to remove a warning */
 	}
 
 	switch ((pid = fork())) {
