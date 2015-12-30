@@ -3,33 +3,33 @@ NAME
 
 DESCRIPTION
 	sat is a simple implementation of at(1). But is not compatible
-	with at(1). It is used to queue jobs to be executed later, outside
-	the current controlling terminal.
+	with at(1). It is used to queue jobs to be executed later,
+	outside the current controlling terminal.
 
 	sat can also print and edit the list of queued jobs.
 
 	If you are using autohaltd(8), you should set up hooks for sat
 	that pauses autohaltd(8) using SIGSTOP (and resume with SIGCONT)
 	when there are queued jobs. This would prevent autohaltd(8) from
-	shutting down the machine while there are queued jobs but no logins.
-	sat cannot stop autohaltd(8) by adding login entries, because
-	autohaltd(8) will only recognise them if they are in fact true
-	logins.
+	shutting down the machine while there are queued jobs but no
+	logins. sat cannot stop autohaltd(8) by adding login entries,
+	because autohaltd(8) will only recognise them if they are in fact
+	true logins.
 
 RATIONALE
 	at(1) is far too complex.
 
-	sat does not do natural language time parsing, it is far too complex,
-	and locale dependent, for all programs to implement and should be
-	done in a separate program. Not even GNU date(1) gets this right.
-	sat does however do some trivial parsing.
+	sat does not do natural language time parsing, it is far too
+	complex, and locale dependent, for all programs to implement and
+	should be done in a separate program. Not even GNU date(1) gets
+	this right. sat does however do some trivial parsing.
 
 	sat does not sanitise the environment. You have env(1) for that.
-	Relaying on sat to sanitise the environment appropriately could prove
-	to be a misfortune.
+	Relaying on sat to sanitise the environment appropriately could
+	prove to be a misfortune.
 
-	sat does not do mailing because that is very restrictive, hooks are
-	used instead.
+	sat does not do mailing because that is very restrictive, hooks
+	are used instead.
 
 	sat does not do system load analysis, this should be done in a
 	separate program.
@@ -39,8 +39,8 @@ RATIONALE
 	'sh -c ": QUEUE-a ; my command"'.
 
 	at(1) should not be merged into cron(8). cron(8) does recurring
-	scheduled jobs, at(1) does one-time unscheduled jobs. atq(1) does
-	not translate to cron(8).
+	scheduled jobs, at(1) does one-time unscheduled jobs. atq(1)
+	does not translate to cron(8).
 
 ENVIRONMENT
 	XDG_RUNTIME_DIR
@@ -52,9 +52,9 @@ ENVIRONMENT
 		The pathname of the hook script to use. Does not have to
 		already exist. If not defined, $XDG_CONFIG_HOME/sat/hook
 		(if XDG_CONFIG_HOME is defined), $HOME/.config/sat/hook
-		(if HOME is defined), ~/.config/sat/hook (if the user has
-		a home and is not root), or /etc/sat/hook (otherwise) is
-		used.
+		(if HOME is defined), ~/.config/sat/hook (if the user
+		has a home and is not root), or /etc/sat/hook (otherwise)
+		is used.
 
 FUTURE DIRECTIONS
 	sat-atcompat will be written to bring compatibility with
