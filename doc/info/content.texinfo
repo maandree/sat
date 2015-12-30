@@ -10,6 +10,8 @@
 @menu
 * Overview::                                Brief overview of @command{sat}.
 * Invoking::                                Invocation of @command{sat}.
+* Hooks::                                   How to use hooks.
+* Output::                                  How the output is formatted.
 
 * Free Software Needs Free Documentation::  Why free documentation is important.
 * GNU Free Documentation License::          Copying and sharing this manual.
@@ -19,6 +21,8 @@
 
 @include chap/overview.texinfo
 @include chap/invoking.texinfo
+@include chap/hooks.texinfo
+@include chap/output.texinfo
 
 @include appx/free-software-needs-free-documentation.texinfo
 

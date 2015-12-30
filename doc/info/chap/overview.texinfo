@@ -60,4 +60,3 @@ and @code{CLOCK_BOOTTIME_ALARM}, if you need those
 clocks, you can use the less powerful @command{sleep-until}
 which supports all clocks your operating system supports.
 
-
