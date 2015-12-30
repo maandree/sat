@@ -49,6 +49,10 @@ quote(const char *str)
 	const unsigned char *s;
 	char *rc = NULL;
 
+	if (!*str) {
+		return strdup("''");
+	}
+
 	for (s = (const unsigned char *)str; *s; s++) {
 		if      (*s <  ' ')   in++;
 		else if (*s == 127)   in++;
