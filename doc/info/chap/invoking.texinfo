@@ -83,19 +83,19 @@ than 24; @code{MM} is the minute in the hour, which must
 be an integer in [0, 59]; and @code{SS} is the second
 in the minute, which may be any non-negative value, it
 may a floatig-point value which will be parsed up to
-nanosecond resultion.
+nanosecond resolution.
 @item S
 The job shall run the next time@footnote{Have you heard
 of leap seconds and how we handle time in @sc{POSIX} time.}
 the POSIX time is @code{S}. That is, @code{S} seconds
 after 1970-01-01 00:00:00 UTC (the Epoch), not counting
 leap seconds. This may be a floating-point value which will
-be parsed up to nanosecond resultion. This is been added so
+be parsed up to nanosecond resolution. This is been added so
 that you may use an external parser.
 @item +S
 The job shall be executed in @code{S} seconds, this may
 be a floating-point value which will be parsed up to
-nanosecond resultion. Note that only seconds are
+nanosecond resolution. Note that only seconds are
 supported, not minutes or hours. Unless you use an
 external parsers, code values to know are
 @table @asis
