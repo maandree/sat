@@ -94,7 +94,7 @@ ___EVERYTHING_INFO = sat titlepage-data content hardcopy-copying  \
 ___EVERYTHING_H = client common daemon daemonise parse_time
 _EVERYTHING = $(foreach F,$(___EVERYTHING_INFO),doc/info/$(F).texinfo)  \
               $(foreach F,$(___EVERYTHING_H),src/$(F).h)  \
-              $(__EVERYTHING_ALL_COMMON) DEPENDENCIES INSTALL NEWS
+              $(__EVERYTHING_ALL_COMMON) DEPENDENCIES INSTALL NEWS src/README
 
 # }}
 
