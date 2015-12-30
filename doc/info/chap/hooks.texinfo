@@ -1,5 +1,47 @@
 @node Hooks
 @chapter Hooks
 
-TODO
+@command{satd} runs a hook script, if available, whenever
+something important happens. The pathname of the hook
+script is determined by the environment variable
+@env{SAT_HOOK_PATH}, see @ref{Invoking} for its fallbacks.
+
+The script is run when a job as run and removed. The script
+will run with an environment identical to the job, which is
+idential to the environment @command{sat} had when the job
+was queued. The first argument, excluding the zeroth argument
+(the pathname of the script) in the hook script's command
+line will be the action that is performed, the following
+arguments are job's command line arguments including the
+zeroth argument (the name of the command). Possible actions
+are:
+@table @code
+@item expired
+The job will run momentarily as scheduled.
+@item forced
+The job will run momentarily due to use of @command{satr}.
+@item failure
+The job could not be executed or failed.
+@item success
+The job ran successfully.
+@item removed
+The job with removed using @command{satrm}.
+@end table
+@noindent
+@command{satd} ensure that the script is not run between
+@code{expired} and @code{forced} and corresponding
+@code{failure} or @code{success}.
+
+A very simple way to inform when these actions take place
+is to use the script
+@example
+#!/bin/sh
+action="$1"
+shift 1
+exec wall -n "sat: $action $JOBNAME ($*)"
+@end example
+@noindent
+and always set the environment variable @env{JOBNAME}
+to a string that identifies the job when queuing it
+using @command{sat}.
 
