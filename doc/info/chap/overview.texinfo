@@ -24,6 +24,9 @@ cannot stop @command{autohaltd} by adding login entries,
 because @command{autohaltd} will only recognise them if
 they are in fact true logins.
 
+@command{sat} stores the job queue in a file. However,
+this file does not persist between reboot.
+
 @command{sat} was written because @command{at} is far
 too complex and has a lot of issues. @command{at}
 sanitises the environment, @command{sat} does not do
