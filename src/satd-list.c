@@ -40,17 +40,18 @@ quote(const char *str)
 {
 #define UNSAFE(c)  strchr(" \"$()[]{};|&^#!?*~`<>", c)
 
-	size_t in = 0; /* < ' '     */
-	size_t sn = 0; /* in UNSAFE */
-	size_t bn = 0; /* = '\\'    */
-	size_t qn = 0; /* = '\''    */
-	size_t rn = 0; /* other     */
+	size_t in = 0; /* < ' ' or 127 */
+	size_t sn = 0; /* in UNSAFE    */
+	size_t bn = 0; /* = '\\'       */
+	size_t qn = 0; /* = '\''       */
+	size_t rn = 0; /* other        */
 	size_t n, i = 0;
 	const unsigned char *s;
 	char *rc = NULL;
 
 	for (s = (const unsigned char *)str; *s; s++) {
 		if      (*s <  ' ')   in++;
+		else if (*s == 127)   in++;
 		else if (UNSAFE(*s))  sn++;
 		else if (*s == '\\')  bn++;
 		else if (*s == '\'')  qn++;
@@ -77,7 +78,7 @@ quote(const char *str)
 		rc[i++] = '$';
 		rc[i++] = '\'';
 		for (s = (const unsigned char *)str; *s; s++) {
-			if (*s <  ' ') {
+			if ((*s <  ' ') || (*s == 127)) {
 				rc[i++] = '\\';
 				rc[i++] = 'x';
 				rc[i++] = "0123456789ABCDEF"[(*s >> 4) & 15];
