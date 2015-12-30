@@ -52,3 +52,12 @@ Some think that @command{at} shall be merge into
 not think so because it is two wilding different
 kind of job scheduling.
 
+@command{sat} uses two clocks: @code{CLOCK_REALTIME}
+for time specified in absolute time, and
+@code{CLOCK_BOOTTIME} for time specified in relative
+time. Note that this is not @code{CLOCK_REALTIME_ALARM}
+and @code{CLOCK_BOOTTIME_ALARM}, if you need those
+clocks, you can use the less powerful @command{sleep-until}
+which supports all clocks your operating system supports.
+
+

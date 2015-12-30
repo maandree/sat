@@ -1,5 +1,138 @@
 @node Invoking
 @chapter Invoking
 
-TODO TODO TODO TODO TODO TODO TODO TODO
+The @command{sat} package has four commands,
+excluding the daemon:
+@example
+sat TIME COMMAND...
+satq
+satr [JOB-ID]...
+satrm JOB-ID...
+@end example
+@noindent
+None of these have any options, and @command{satq}
+does not take any arguments at all. There are two
+recognised environment variables:
+
+@table @env
+@item XDG_RUNTIME_DIR
+This environment variable names the directory in
+which interprocess communication related files are
+stored. If unset or empty, @file{/run} is used.
+
+@item SAT_HOOK_PATH
+The pathname of the hook script to use. Does not
+have to already exist. If not defined,
+@file{$XDG_CONFIG_HOME/sat/hook}
+(if @env{XDG_CONFIG_HOME} is defined),
+@file{$HOME/.config/sat/hook} (if @env{HOME} is
+defined), @file{~/.config/sat/hook} (if the user has
+a home and is not root), or @file{/etc/sat/hook}
+(otherwise) is used.
+@end table
+
+The daemon, which is user-private, also recognises
+these environment variables, and is in fact the only
+one that actually looks at @env{SAT_HOOK_PATH}. Its
+command line synopsis is
+@example
+satd [-f]
+@end example
+@noindent
+where @option{-f} is used to tell it to run in the
+foreground rather than to daemonise itself and create
+a PID file. You would normally not run @command{satd}
+manually, it is started automatically by the other
+commands and exits automatically when it has nothing
+more to do. If you want to update it to never version
+whilst it is running, kill it with @command{SIGHUP}.
+It may have children with the same name, make sure you
+kill the parent.
+
+@command{sat} runs the specified command (@code{COMMAND...})
+at a specified time (@code{TIME}). The job will run with
+the same environment as @command{sat} has when it queues
+the job.
+
+@command{satq} lists all queued jobs to standard output.
+
+@command{satr} runs the selected jobs (unless they have
+already been started or removed.) If no job is selected, all queued
+jobs are run.
+
+@command{satrm} removes selected jobs (unless they have
+already been started or removed) from the queue of jobs.
+
+@code{JOB-ID} is a unique non-negative integer (serial number),
+which can be retrieved by running @command{satq}.
+
+@code{TIME} is the time the job shall be scheduled to run.
+Is can be in either of the formats
+@table @code
+@item HH:MM
+The job shall run the next time the clock is @code{HH:MM}
+is @sc{UTC}, which is a 24-hour clock time, where @code{HH}
+is the hour and may be any non-negative integer, even higher
+than 24; and @code{MM} is the minute in the hour, which must
+be an integer in [0, 59].
+@item HH:MM:SS
+The job shall run the next time the clock is @code{HH:MM:SS}
+in @code{UTC}, which is a 24-hour clock time, where @code{HH}
+is the hour and may be any non-negative integer, even higher
+than 24; @code{MM} is the minute in the hour, which must
+be an integer in [0, 59]; and @code{SS} is the second
+in the minute, which may be any non-negative value, it
+may a floatig-point value which will be parsed up to
+nanosecond resultion.
+@item S
+The job shall run the next time@footnote{Have you heard
+of leap seconds and how we handle time in @sc{POSIX} time.}
+the POSIX time is @code{S}. That is, @code{S} seconds
+after 1970-01-01 00:00:00 UTC (the Epoch), not counting
+leap seconds. This may be a floating-point value which will
+be parsed up to nanosecond resultion. This is been added so
+that you may use an external parser.
+@item +S
+The job shall be executed in @code{S} seconds, this may
+be a floating-point value which will be parsed up to
+nanosecond resultion. Note that only seconds are
+supported, not minutes or hours. Unless you use an
+external parsers, code values to know are
+@table @asis
+@item 60
+1 minute.
+@item 300
+5 minutes.
+@item 600
+10 minutes.
+@item 1800
+30 minutes.
+@item 3600
+1 hour.
+@item 18000
+5 hours.
+@item 53200
+12 hours.
+@item 86400
+24 hours.
+@end table
+@noindent
+You can of course also use @command{expr}, or
+@code{$(( ))} in GNU Bash.
+@end table
+@noindent
+Values must be encoded using only digits, at most one
+decimal point which is encoded with a period (@code{.}).
+If a specified time is in the parsed, but not more than
+24 hours ago, 24 hours will be added to it, and a warning
+is printed. This is so that you may use an external parser
+and not have too worry too much about how it behaves.
+
+To the end of @code{HH:MM} and @code{HH:MM:SS} you may
+add @code{Z} or @code{UTC}, with any optional number
+of blank spaces between it and the time. Unless this is
+done, you will receive a warning telling that the time
+is interpreted in UTC. You cannot use local time, or
+any other timezone than UTC unless you use an external
+parser.
 
