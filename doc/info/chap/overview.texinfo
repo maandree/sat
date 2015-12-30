@@ -40,8 +40,9 @@ do not need more than one queue, queues can easily
 be emulated. Finally, the authors of @command{at} had
 the brave idea to do natural language parsing,
 @footnote{Good luck getting that to work properly
-for even just English!} @command{sat} does however
-do trivial parsing.
+for even just English and the Gregorian calendar!}
+@command{sat} does however do trivial parsing, but
+is designed so that you can use any external parser.
 
 Some think that @command{at} shall be merge into
 @command{cron}. The authors of @command{sat} does
