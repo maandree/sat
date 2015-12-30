@@ -11,10 +11,15 @@ BUILD DEPENDENCIES:
 	c99
 	make
 	coreutils
+	texinfo>=4.11 (opt-out, for info, pdf, dvi, ps, and html manuals)
+	texlive-plainextra (opt-in, for pdf, dvi, and ps manuals)
+
+	texinfo<4.11 can be used if '@frenchspacing on' is removed.
 
 
 INSTALL DEPENDENCIES:
 
 	make
 	coreutils
+	texinfo (opt-out, for dir-entry of info manual)
 
