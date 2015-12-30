@@ -1,0 +1,104 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@documentencoding UTF-8
+@include reusable/macros.texinfo
+@copying
+@c --------------------------------------------------------------------------------
+Copyright @copyright{} 2015  @w{Mattias Andrée @e{maandree@@member.fsf.org}}
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version@tie{}1.3 or
+any later version published by the Free Software Foundation; with the
+Invariant Sections being ``Free Software Needs Free Documentation'',
+the ``GNU Free Documentation License'', with no Front-Cover Texts, and
+with no Back-Cover Texts. A copy of the license is included in the section
+entitled ``GNU Free Documentation License''.
+@end quotation
+@c THIS WAS LAST CHANGED 2015-DECEMBER-30 UTC
+@c When updated, please remember to update hardcopy-copying.texinfo too.
+@c --------------------------------------------------------------------------------
+@end copying
+
+@setfilename sat.info
+@settitle sat
+@documentlanguage en_GB
+@include titlepage-data.texinfo
+
+@c  You can change the title of the document in dir by compiling with
+@c    INFO_FLAGS='-c CATEGORY=your_new_category'
+@ifclear CATEGORY
+@set CATEGORY Automation
+@end ifclear
+
+@dircategory @value{CATEGORY}
+@direntry
+* sat: (sat).                        @value{subtitle}
+@end direntry
+
+@documentdescription
+User manual for sat.
+A collection of utilities for scheduling
+one-time jobs to be executed layer.
+@end documentdescription
+@c %**end of header
+
+
+@iftex
+@c @set USLETTER
+@c @set AFOURPAPER
+@c @set AFIVEPAPER
+@c @set SMALLBOOK
+
+@c @set HARDCOPY
+@c @set CROPMARKS
+@c @set SKIPCHAPTERNEWPAGE
+@c @set SKIPFONTTEXTSIZE
+@end iftex
+@c @set LOGO
+@c @set DOUBLEHEADINGS
+@c @set SINGLEHEADINGS
+@c @set AMERICANSPACING
+@c @set NOFINALOUT
+
+@ignore
+
+  CROPMARKS has no effect unless HARDCOPY is set. CROPMARKS
+  and AFIVEPAPER (or actually @cropmarks and @afivepaper) does
+  not play well together.
+
+  You can configure how TeX output files should look by uncommenting
+  @set commands above. Do not uncomment more than one of the paper
+  sizes (USLETTER, AFOURPAPER, AFIVEPAPER and SMALLBOOK); if none is
+  uncomment AFOURPAPER will be set unless HARDCOPY is set, in which
+  case SMALLBOOK will be set. However, if you do not want to modify
+  this source file, you can run `make` with for example
+  `TEXINFO_FLAGS='--texinfo="@set HARDCOPY"'`.
+
+  Finally, you can include, on the front page, the version of sat
+  that the manual is up to date with, by setting the value of VERSION
+  to the version of sat, as well as date of the last update by
+  setting DATE, and edition by setting EDITION. This is intended for
+  printed manuals. The date is recommended to not be more accurate,
+  or less accurate, than to the month. The edition should be formatted
+  as, for example, ``1@sup{st}''.
+
+@end ignore
+
+@comment You can see these too with TEXINFO_FLAGS.
+@c @paragraphindent asis
+@c @firstparagraphindent none
+@c @exampleindent asis
+@c @kbdinputstyle distinct
+
+@include reusable/paper.texinfo
+
+
+@include hardcopy-copying.texinfo
+@include reusable/titlepage.texinfo
+@setheadings{}
+
+@include content.texinfo
+
+@bye
+

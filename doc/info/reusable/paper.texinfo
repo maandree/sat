@@ -1,0 +1,109 @@
+@c  This file is used, by inclusion, to allow the
+@c  builder to specify how output shall be formatted.
+
+@c  On dead tree editions we defailt to smallbook format.
+@ifset HARDCOPY
+@ifclear USLETTER
+@ifclear AFOURPAPER
+@ifclear AFIVEPAPER
+@ifclear SMALLBOOK
+@set SMALLBOOK
+@end ifclear
+@end ifclear
+@end ifclear
+@end ifclear
+@end ifset
+
+@c  On dead tree editions the heading on the left page
+@c  is different from the heading on the right page.
+@c  On online editions the heading is identical on the
+@c  left pages and on the right pages.
+@ifclear SINGLE_HEADINGS
+@ifclear DOUBLE_HEADINGS
+@ifclear HARDCOPY
+@set SINGLE_HEADINGS
+@end ifclear
+@ifset HARDCOPY
+@set DOUBLE_HEADINGS
+@end ifset
+@end ifclear
+@end ifclear
+
+@c  Apply paper format. Default to A4. (Remember
+@c  dead tree editions defaulted to smallbook.)
+@ifset AFIVEPAPER
+@afivepaper
+@end ifset
+@ifset SMALLBOOK
+@smallbook
+@end ifset
+@ifclear AFIVEPAPER
+@ifclear SMALLBOOK
+@ifclear USLETTER
+@afourpaper
+@set AFOURPAPER
+@end ifclear
+@end ifclear
+@end ifclear
+@c  (Texinfo defaults to US letter, thus nothing is
+@c  done for USLETTER.)
+
+@c  Only on dead tree editions: optionally add
+@c  cropmarks, and by default, chapters begin
+@c  on odd page numbers (the right side.)
+@ifset HARDCOPY
+@ifset CROPMARKS
+@cropmarks
+@end ifset
+@ifclear SKIPCHAPTERNEWPAGE
+@setchapternewpage odd
+@end ifclear
+@end ifset
+
+@c  Apply font size. On smallbook and A5 default to
+@c  10 points, on A4 and US letter we default to
+@c  11 points.
+@ifclear SKIPFONTTEXTSIZE
+@ifset SMALLBOOK
+@set SMALLFONT
+@end ifset
+@ifset AFIVEPAPER
+@set SMALLFONT
+@end ifset
+@end ifclear
+@ifset SMALLFONT
+@fonttextsize 10
+@end ifset
+@ifclear SMALLFONT
+@iftex @c Because of bug in Texinfo<=4.13
+@fonttextsize 11
+@end iftex
+@end ifclear
+
+@c  In America it is customary to have two spaces after
+@c  a period. It is not elsewhere. (@frenchspacing is a
+@c  misnomer)
+@ifclear AMERICANSPACING
+@frenchspacing on
+@end ifclear
+
+@c  This should only be used when writting the document.
+@c  It is used to locate overflows. It should be be used
+@c  in a printed version. It can be used in an online come
+@c  use users can easier detect overflows and report them.
+@ifclear NOFINALOUT
+@finalout
+@end ifclear
+
+
+@c  Call this macro after the title page, but before the
+@c  table of content, or the short table of content.
+@macro setheadings{}
+@ifset DOUBLEHEADINGS
+@headings double
+@end ifset
+@ifset SINGLEHEADINGS
+@headings single
+@end ifset
+@end macro
+

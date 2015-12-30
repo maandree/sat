@@ -1,0 +1,28 @@
+@c  This file includes everything after the titlepage.
+
+
+@ifnothtml
+@c @shortcontents  @c (if the table of content gets too large.)
+@contents
+@end ifnothtml
+
+
+@menu
+* Overview::                                Brief overview of @command{sat}.
+* Invoking::                                Invocation of @command{sat}.
+
+* Free Software Needs Free Documentation::  Why free documentation is important.
+* GNU Free Documentation License::          Copying and sharing this manual.
+@end menu
+@c In GNU Emacs a @detailmenu can be created with `C-c C-u m`.
+
+
+@include chap/overview.texinfo
+@include chap/invoking.texinfo
+
+@include appx/free-software-needs-free-documentation.texinfo
+
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
+@include appx/fdl.texinfo
+

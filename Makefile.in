@@ -73,11 +73,11 @@ _HEADER_DIRLEVELS = 1
 _CPPFLAGS = -D'PACKAGE="$(PKGNAME)"' -D'PROGRAM_VERSION="$(_VERSION)"'
 
 # Used by mk/texinfo.mk
-#_TEXINFO_DIRLEVELS = 2
-#_INFOPARTS = 0
-#_HAVE_TEXINFO_MANUAL = yes
-#_HTML_FILES = Free-Software-Needs-Free-Documentation.html  GNU-Free-Documentation-License.html  \
-#              index.html  Invoking.html  Overview.html
+_TEXINFO_DIRLEVELS = 2
+_INFOPARTS = 0
+_HAVE_TEXINFO_MANUAL = yes
+_HTML_FILES = Free-Software-Needs-Free-Documentation.html  GNU-Free-Documentation-License.html  \
+              index.html  Invoking.html  Overview.html
 
 # Used by mk/man.mk
 _MAN_PAGE_SECTIONS = 1
@@ -87,10 +87,10 @@ _MAN_1 = sat satr satrm satq satd
 _COPYING = COPYING
 
 # Used by mk/dist.mk
-#___EVERYTHING_INFO = sat titlepage-data content hardcopy-copying  \
-#                     appx/fdl appx/free-software-needs-free-documentation  \
-#                     chap/invoking chap/overview  \
-#                     reusable/macros reusable/paper reusable/titlepage
+___EVERYTHING_INFO = sat titlepage-data content hardcopy-copying  \
+                     appx/fdl appx/free-software-needs-free-documentation  \
+                     chap/invoking chap/overview  \
+                     reusable/macros reusable/paper reusable/titlepage
 ___EVERYTHING_H = client common daemon daemonise parse_time
 _EVERYTHING = $(foreach F,$(___EVERYTHING_INFO),doc/info/$(F).texinfo)  \
               $(foreach F,$(___EVERYTHING_H),src/$(F).h)  \

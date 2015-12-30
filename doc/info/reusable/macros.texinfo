@@ -1,0 +1,48 @@
+@c   GENERAL ADVICE.
+@c Because of an previous regression bug in Texinfo
+@c it is a good idea to use @w around lines using
+@c macros.
+
+
+@c  Use this comment to get a good looking e-mail
+@c  address in both the info output and the TeX
+@c  processed output.
+@iftex
+@macro e{a}
+(@email{\a\})
+@end macro
+@end iftex
+@ifnottex
+@macro e{a}
+@email{\a\}
+@end macro
+@end ifnottex
+
+@c  This is intented do be used inside @example.
+@c  At the beginning of non-code text in a source
+@c  code comment, use this macro to make it look
+@c  good in TeX processed output. End with @xtt.
+@iftex
+@macro xrm{}
+@rm{}
+@end macro
+@end iftex
+@ifnottex
+@macro xrm{}
+@end macro
+@end ifnottex
+
+@c  This is intented do be used inside @example.
+@c  At the end of non-code text in a source code
+@c  comment, use this macro to make it look
+@c  good in TeX processed output.
+@iftex
+@macro xtt{}
+@tt{}
+@end macro
+@end iftex
+@ifnottex
+@macro xtt{}
+@end macro
+@end ifnottex
+

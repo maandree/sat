@@ -1,0 +1,23 @@
+@c  The title and the subtitle of the manual.
+@set title sat
+@set subtitle Execute a job later
+
+@c  The full name of the documented program or package.
+@set programname @command{sat}
+@set programnamewiththe @command{sat}
+
+
+@c  Authors of the manual. Included at the bottom
+@c  of the titlepage on TeX processed output.
+@macro authors{}
+@author by Mattias Andrée (maandree)
+@end macro
+
+
+@c  Dedication for TeX processed output.
+@c @set HAVE_DEDICATION
+@c @macro dedication{}
+@c @center `'
+@c @end macro
+@c  (I don't use dedications, I use quotes.)
+

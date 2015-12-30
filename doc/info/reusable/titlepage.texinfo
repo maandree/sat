@@ -1,0 +1,79 @@
+@c  This file @top or @titlepage.
+
+@ifnottex
+@node Top
+@top @value{title} -- @value{subtitle}
+@insertcopying
+@end ifnottex
+
+@titlepage
+@title @value{title}
+@subtitle @value{subtitle}
+
+@c  Date, edition, and version of the program.
+@c  Should be set on dead tree editions. Not too
+@c  important on online editions.
+@ifset DATE
+@ifset VERSION
+@ifset EDITION
+@subtitle @value{DATE}, @value{programname} version@tie{}@value{VERSION}, @value{EDITION} edition
+@end ifset
+@ifclear EDITION
+@subtitle @value{DATE}, @value{programname} version@tie{}@value{VERSION}
+@end ifclear
+@end ifset
+@ifclear VERSION
+@ifset EDITION
+@subtitle @value{DATE}, @value{EDITION} edition
+@end ifset
+@ifclear EDITION
+@subtitle @value{DATE}
+@end ifclear
+@end ifclear
+@end ifset
+@ifclear DATE
+@ifset VERSION
+@ifset EDITION
+@subtitle @value{programname} version@tie{}@value{VERSION}, @value{EDITION} edition
+@end ifset
+@ifclear EDITION
+@subtitle @value{programname} version@tie{}@value{VERSION}
+@end ifclear
+@end ifset
+@ifclear VERSION
+@ifset EDITION
+@subtitle @value{EDITION} edition
+@end ifset
+@end ifclear
+@end ifclear
+
+@ifset LOGO
+@vskip 0pt plus 1filll
+@c  This way, it is centered exactly in pdf and approximently
+@c  in dvi and ps. @center does not work for @image in dvi and ps.
+@multitable @columnfractions 0.15 0.7
+@item @tab @center @image{../logo,250px}
+@end multitable
+@vskip 0pt plus 2filll
+@end ifset
+@authors{}
+
+@page
+@ifset HARDCOPY
+@vskip 0pt plus 1filll
+@insertcopying
+@page
+@end ifset
+@ifset HAVE_DEDICATION
+@dedication{}
+@end ifset
+@ifclear HARDCOPY
+@vskip 0pt plus 1filll
+@ifset HARDCOPY_AVAILABLE
+@orderhardcopy{}
+@*
+@end ifset
+@insertcopying
+@end ifclear
+@end titlepage
+

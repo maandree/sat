@@ -1,0 +1,69 @@
+@c --- This is a template for the hardcopy-copying.texinfo file. ---
+
+@c  Uncomment this when dead tree editions can be ordered.
+@c @set HARDCOPY_AVAILABLE
+
+
+@set PRINTINGNUMBER First
+@set PRINTINGDATE Januari 0000
+@set ISBNNUMBER 0000000000
+
+@ifset HARDCOPY
+@copying
+@ifset VERSION
+This manual documents @value{programnamewiththe} version @value{VERSION}@.
+@end ifset
+@ifclear VERSION
+This manual documents @value{programnamewiththe}.
+@end ifclear
+@*
+@ifset EDITION
+@sc{ISBN} @value{ISBNNUMBER}, @value{EDITION} Edition, @value{PRINTINGNUMBER} Printing, @value{PRINTINGDATE}.
+@end ifset
+@ifclear EDITION
+@sc{ISBN} @value{ISBNNUMBER}, @value{PRINTINGNUMBER} Printing, @value{PRINTINGDATE}.
+@end ifclear
+@*
+
+Printed by:
+@*
+
+X
+
+@*@*
+Copyright @copyright{} 2015  Mattias Andrée @e{maandree@@member.fsf.org}
+@*
+
+@c The copyright information from the main file, add any required
+@c Invariant Sections being used on the dead tree edition.
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version@tie{}1.3 or
+any later version published by the Free Software Foundation;
+with the Invariant Sections being
+``Free Software Needs Free Documentation'',
+the ``GNU Free Documentation License'',
+with no Front-Cover Texts,
+and with no Back-Cover Texts.
+A copy of the license is included in the section entitled
+``GNU Free Documentation License''.
+@c  THIS WAS LAST UPPDATE 2015-DECEMBER-30 UTC
+@c  AUTHORITATIVE COPYRIGHT INFORMATION IS AVAILABLE
+@c  IN sat.texinfo. THIS FILL MUST BE UPDATED
+@c  BEFORE PRINTING.
+
+@*
+Cover art by XY Z. Cover design by XY Z. Printed in XYZ.
+@end copying
+@end ifset
+
+
+
+@ifclear HARDCOPY
+@ifset HARDCOPY_AVAILABLE
+@macro orderhardcopy{}
+If you prefer a dead tree edition, you can order one from
+...
+@endif
+@end ifset
+@end ifclear
+
