@@ -1,0 +1,116 @@
+.TH SATQ 1 SAT
+.SH NAME
+satq \- List all jobs queued for later execution.
+.SH SYNOPSIS
+.B satq
+.SH DESCRIPTION
+.BR satq (1)
+shall list all jobs in
+.BR sat 's
+list of jobs queued for later execution. Each job in the
+queue is separated by one empty line (LF LF), there is
+a empty line at the end of the output too. Each job is
+printed on multiple lines, where all but the first line
+is indented with two blank spaces. The first line is not
+indented. The output for each job is formatted
+.PP
+.nf
+job: \fIJOB-ID\fP clock: \fICLOCK\fP argc: \fIARGC\fP remaining: \fIREM\fP argv[0]: \fIARGV0\fP
+  time: \fITIME\fP
+  argv: \fIARGV\fP
+  envp: \fIENVP\fP
+.fi
+.PP
+where
+.TP
+.I JOB-ID
+is a the ID of the job. This is a non-negative integer.
+.TP
+.I CLOCK
+is either
+.B walltime
+or
+.BR boottime .
+.TP
+.I ARGC
+is the number of arguments in the job's command line, including
+the command itself. This is a positive integer.
+.TP
+.I REM
+is the remaining time until the job is executed. This is
+formatted
+.RI [ DAYS \fBd\fP[ HOURS \fB:\fP[ MINUTES \fB:\fP]]] SECONDS \fB.\fP NANOSECONDS
+where
+.IR DAYS ,
+.IR HOURS ,
+and
+.IR MINUTES
+are only included if non-zero or a higher-valued variable
+is included. The first included uses as few digits as
+possible, the others uses two digits, this true for
+.I SECONDS
+too.
+.I NANOSECONDS
+is always in nine digits.
+.TP
+.I ARGV0
+is the first argument in the job's command line, that is,
+the command that will be executed. This field, in contrast
+to the eailer, may contain spaces. However it will be
+quoted, if necessary, in manner so that it can be pasted
+to the shell and run.
+.TP
+.I TIME
+is the time the job will be executed. If the
+.I CLOCK
+is
+.BR boottime ,
+this is formatted as
+.IR REM .
+If
+.I CLOCK
+is
+.BR walltime ,
+it is formatted
+.IB YEAR - MM - DD \  HH : MM : SS
+in 24-hour clock, local time.
+.TP
+.I ARGV
+is all arguments in the job's command line, including
+.IR ARGV0 .
+Each argument is quoted if necssary.
+.TP
+.I ENVP
+is all environment variables. Each entry is quoted
+if necessary so it can be pasted to the shell and
+used with
+.BR env (1).
+.SH OPTIONS
+None.
+.SH ENVIRONMENT
+.TP
+.B XDG_RUNTIME_DIR
+This environment variable names the directory in which
+interprocess communication related files are stored. If
+unset or empty, /run is used.
+.TP
+.B SAT_HOOK_PATH
+The pathname of the hook script to use. Does not have to
+already exist. If not defined, $XDG_CONFIG_HOME/sat/hook
+(if XDG_CONFIG_HOME is defined), $HOME/.config/sat/hook
+(if HOME is defined), ~/.config/sat/hook (if the user has
+a home and is not root), or /etc/sat/hook (otherwise) is
+used.
+.SH "SEE ALSO"
+.BR sat (1),
+.BR satrm (1),
+.BR satr (1),
+.BR satd (1)
+.SH AUTHORS
+Principal author, Mattias Andrée.  See the COPYING file for the full
+list of authors.
+.SH LICENSE
+MIT/Expat License.
+.SH BUGS
+Please report bugs to https://github.com/maandree/sat/issues or to
+maandree@member.fsf.org

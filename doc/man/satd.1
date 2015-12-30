@@ -1,0 +1,43 @@
+.TH SATD 1 SAT
+.SH NAME
+satd \- Start the daemon that runs jobs queued for later execution.
+.SH SYNOPSIS
+.B satd
+.RB [ \-f ]
+.SH DESCRIPTION
+.BR satd (1)
+shall start the
+.B sat
+daemon, which is used for automatically executing jobs
+queued for later execution.
+.SH OPTIONS
+.TP
+.B \-f
+Run the daemon in the foreground.
+.SH ENVIRONMENT
+.TP
+.B XDG_RUNTIME_DIR
+This environment variable names the directory in which
+interprocess communication related files are stored. If
+unset or empty, /run is used.
+.TP
+.B SAT_HOOK_PATH
+The pathname of the hook script to use. Does not have to
+already exist. If not defined, $XDG_CONFIG_HOME/sat/hook
+(if XDG_CONFIG_HOME is defined), $HOME/.config/sat/hook
+(if HOME is defined), ~/.config/sat/hook (if the user has
+a home and is not root), or /etc/sat/hook (otherwise) is
+used.
+.SH "SEE ALSO"
+.BR sat (1),
+.BR satq (1),
+.BR satrm (1),
+.BR satd (1)
+.SH AUTHORS
+Principal author, Mattias Andrée.  See the COPYING file for the full
+list of authors.
+.SH LICENSE
+MIT/Expat License.
+.SH BUGS
+Please report bugs to https://github.com/maandree/sat/issues or to
+maandree@member.fsf.org

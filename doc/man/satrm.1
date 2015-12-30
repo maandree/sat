@@ -1,0 +1,45 @@
+.TH SATRM 1 SAT
+.SH NAME
+satrm \- Unqueue a job for later execution.
+.SH SYNOPSIS
+.B satrm
+.IR JOB-ID ...
+.SH DESCRIPTION
+.BR satrm (1)
+shall remove one or more jobs from
+.BR sat 's
+list of jobs queued for later execution. The job's to
+remove shall have an ID listed in
+.IR JOB-ID .
+This is a numerical value, which can be found by examining
+the queue with
+.BR satq (1).
+.SH OPTIONS
+None.
+.SH ENVIRONMENT
+.TP
+.B XDG_RUNTIME_DIR
+This environment variable names the directory in which
+interprocess communication related files are stored. If
+unset or empty, /run is used.
+.TP
+.B SAT_HOOK_PATH
+The pathname of the hook script to use. Does not have to
+already exist. If not defined, $XDG_CONFIG_HOME/sat/hook
+(if XDG_CONFIG_HOME is defined), $HOME/.config/sat/hook
+(if HOME is defined), ~/.config/sat/hook (if the user has
+a home and is not root), or /etc/sat/hook (otherwise) is
+used.
+.SH "SEE ALSO"
+.BR sat (1),
+.BR satq (1),
+.BR satr (1),
+.BR satd (1)
+.SH AUTHORS
+Principal author, Mattias Andrée.  See the COPYING file for the full
+list of authors.
+.SH LICENSE
+MIT/Expat License.
+.SH BUGS
+Please report bugs to https://github.com/maandree/sat/issues or to
+maandree@member.fsf.org

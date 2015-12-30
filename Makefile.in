@@ -81,7 +81,7 @@ _CPPFLAGS = -D'PACKAGE="$(PKGNAME)"' -D'PROGRAM_VERSION="$(_VERSION)"'
 
 # Used by mk/man.mk
 _MAN_PAGE_SECTIONS = 1
-_MAN_1 = sat
+_MAN_1 = sat satr satrm satq satd
 
 # Used by mk/copy.mk
 _COPYING = COPYING

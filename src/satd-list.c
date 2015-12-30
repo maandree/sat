@@ -191,7 +191,7 @@ send_job_human(struct job *job)
 
 	/* Send message. */
 	t (!(qstr = quote(args[0])));
-	sprintf(line, "job: %zu clock: %s argc: %i remaining: %s.%09li, argv[0]: ",
+	sprintf(line, "job: %zu clock: %s argc: %i remaining: %s.%09li argv[0]: ",
 		job->no, clk, job->argc, rem_s, rem.tv_nsec);
 	t (send_string(SOCK_FILENO, STDOUT_FILENO,
 		       line, qstr, "\n",
