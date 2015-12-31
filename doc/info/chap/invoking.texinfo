@@ -51,8 +51,13 @@ kill the parent.
 
 @command{sat} runs the specified command (@code{COMMAND...})
 at a specified time (@code{TIME}). The job will run with
-the same environment as @command{sat} has when it queues
-the job.
+the same environment and the same working directory as
+@command{sat} has when it queues the job. The working
+directory is determined by its absolute pathname@footnote{Most
+probably the canonical pathname}, if no such directory
+exists when the job is executed, the job's working directory
+will be that of @command{satd}, which is always @file{/}
+unless it was started with @option{-f}.
 
 @command{satq} lists all queued jobs to standard output.
 

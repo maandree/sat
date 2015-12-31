@@ -14,6 +14,7 @@ The output for each job is formatted
 @example
 job: JOB-ID clock: CLOCK argc: ARGC remaining: REM argv[0]: ARGV0
   time: TIME
+  wdir: WDIR
   argv: ARGV
   envp: ENVP
 @end example
@@ -53,6 +54,13 @@ is @code{boottime}, this is formatted in the say way as
 @code{REM}. If @code{CLOCK} is @code{walltime}, it is
 formatted @code{YEAR-MM-DD HH:MM:SS} in 24-hour clock,
 local time.
+
+@item WDIR
+is the working directory the job will have. If that
+directory does not exist when the job is executed,
+the job's working directory will be that if this
+daemon, which is always @file{/} unless @command{satd}
+was started with @option{-f}.
 
 @item ARGV
 is all arguments in the job's command line, including

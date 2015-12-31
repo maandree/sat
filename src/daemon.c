@@ -279,7 +279,7 @@ run_job_or_hook(struct job *job, const char *hook)
 
 	t (!(args = restore_array(job->payload, job->n, &argsn)));
 	t (!(argv = sublist(args, (size_t)(job->argc))));
-	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc))));
+	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc)))); /* Includes wdir. */
 	free(args), args = NULL;
 
 	if (hook) {
@@ -298,7 +298,8 @@ run_job_or_hook(struct job *job, const char *hook)
 		close(STATE_FILENO);
 		close(BOOT_FILENO);
 		close(REAL_FILENO);
-		environ = envp;
+		(void)(status = chdir(envp[0]));
+		environ = envp + 1;
 		execvp(*argv, argv);
 		exit(1);
 	default:

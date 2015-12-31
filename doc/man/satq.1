@@ -17,6 +17,7 @@ indented. The output for each job is formatted
 .nf
 job: \fIJOB-ID\fP clock: \fICLOCK\fP argc: \fIARGC\fP remaining: \fIREM\fP argv[0]: \fIARGV0\fP
   time: \fITIME\fP
+  wdir: \fIWDIR\fP
   argv: \fIARGV\fP
   envp: \fIENVP\fP
 .fi
@@ -74,6 +75,11 @@ is
 it is formatted
 .IB YEAR - MM - DD \  HH : MM : SS
 in 24-hour clock, local time.
+.TP
+.I WDIR
+is the working directory the job will have. However,
+if that directory one longer exists, its working
+directory will be /.
 .TP
 .I ARGV
 is all arguments in the job's command line, including

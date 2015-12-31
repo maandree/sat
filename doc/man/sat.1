@@ -22,9 +22,17 @@ unless it is already running, and queue a specified
 to be executed at a selected
 .IR TIME .
 The job shall be executed with the same environment
-variables as
+variables and the same working directory (by
+pathname) as
 .BR sat (1)
-had when the job was queued.
+had when the job was queued. However, if there is no
+directory will the pathname matching the working
+directory, when the job executes, the working directory
+will be /, or whatever the working directory of
+.BR satd (1)
+(if
+.BR satd (1)
+is running in the foreground.)
 .PP
 The
 .I TIME

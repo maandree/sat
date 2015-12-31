@@ -73,7 +73,6 @@ quote(const char *str)
 			rc[i++] = (char)*s;
 			if (*s == '\'')
 				rc[i++] = '\\', rc[i++] = '\'', rc[i++] = '\'';
-				
 		}
 		break;
 	default:
@@ -146,6 +145,7 @@ send_job_human(struct job *job)
 	const char *clk;
 	char rem_s[3 * sizeof(time_t) + sizeof("d00:00:00")];
 	char *qstr = NULL;
+	char *wdir = NULL;
 	char line[sizeof("job: %zu clock: unrecognised argc: %i remaining: , argv[0]: ")
 		  + 3 * sizeof(size_t) + 3 * sizeof(int) + sizeof(rem_s) + 9];
 	char timestr_a[sizeof("-00-00 00:00:00") + 3 * sizeof(time_t)];
@@ -195,17 +195,19 @@ send_job_human(struct job *job)
 	/* Get arguments. */
 	t (!(args = restore_array(job->payload, job->n, &argsn)));
 	t (!(argv = sublist(args, (size_t)(job->argc))));
-	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc))));
+	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc)))); /* Includes wdir. */
 
 	/* Send message. */
 	t (!(qstr = quote(args[0])));
+	t (!(wdir = quote(envp[0])));
 	sprintf(line, "job: %zu clock: %s argc: %i remaining: %s.%09li argv[0]: ",
 		job->no, clk, job->argc, rem_s, rem.tv_nsec);
 	t (send_string(SOCK_FILENO, STDOUT_FILENO,
-		       line, qstr, "\n",
-		       "  time: ", timestr_a, ".", timestr_b, "\n",
-		       "  argv:",
-		       NULL));
+	               line, qstr, "\n",
+	               "  time: ", timestr_a, ".", timestr_b, "\n",
+	               "  wdir:", wdir, "\n",
+	               "  argv:",
+	               NULL));
 	for (arg = argv; *arg; arg++) {
 		free(qstr);
 		t (!(qstr = quote(*arg)));
@@ -213,7 +215,7 @@ send_job_human(struct job *job)
 	}
 	free(qstr), qstr = NULL;
 	t (send_string(SOCK_FILENO, STDOUT_FILENO, "\n  envp:", NULL));
-	for (arg = envp; *arg; arg++) {
+	for (arg = envp + 1; *arg; arg++) {
 		t (!(qstr = quote(*arg)));
 		t (send_string(SOCK_FILENO, STDOUT_FILENO, " ", qstr, NULL));
 		free(qstr);
@@ -226,6 +228,7 @@ done:
 	free(qstr);
 	free(args);
 	free(argv);
+	free(wdir);
 	free(envp);
 	errno = saved_errno;
 	return rc;

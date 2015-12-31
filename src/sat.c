@@ -23,6 +23,7 @@
 #include "client.h"
 #include "common.h"
 #include <errno.h>
+#include <unistd.h>
 
 
 
@@ -50,10 +51,13 @@ USAGE("TIME COMMAND...")
 int
 main(int argc, char *argv[], char *envp[])
 {
+#define E(CASE, DESC)  case CASE: return fprintf(stderr, "%s: %s: %s\n", argv0, DESC, argv[1]), 2
+
 	struct timespec ts;
 	clockid_t clk;
 	char *msg = NULL;
-	size_t n;
+	void *new;
+	size_t n, size = 64;
 
 	if ((argc < 3) || (argv[1][0] == '-'))
 		usage();
@@ -63,33 +67,29 @@ main(int argc, char *argv[], char *envp[])
 	/* Parse the time argument. */
 	if (parse_time(argv[1], &ts, &clk)) {
 		switch (errno) {
-		case EINVAL:
-			fprintf(stderr,
-			        "%s: time parameter cound not be parsed, perhaps "
-			        "you need an external parser: %s\n", argv0, argv[1]);
-			return 2;
-		case ERANGE:
-			fprintf(stderr,
-			        "%s: the specified time is beyond the limit of what "
-				"can be represented by `struct timespec`: %s\n", argv0, argv[1]);
-			return 2;
-		case EDOM:
-			fprintf(stderr,
-			        "%s: the specified time is in past, and more than "
-				"a day ago: %s\n", argv0, argv[1]);
-			return 2;
-		default:
-			goto fail;
+		E (EINVAL, "time parameter cound not be parsed, perhaps you need an external parser");
+		E (ERANGE, "the specified time is beyond the limit of what can be stored");
+		E (EDOM,   "the specified time is in past, and more than a day ago");
+		default: goto fail;
 		}
 	}
 
 	argc -= 2;
 	argv += 2;
 
+retry:
+	/* Get the size of the current working directory's pathname. */
+	t (!(new = realloc(msg, size <<= 1)));
+	if (!getcwd(msg = new, size)) {
+		t (errno != ERANGE);
+		goto retry;
+	}
+	size = strlen(getcwd(msg, size)) + 1, free(msg);
+
 	/* Construct message to send to the daemon. */
-	n = measure_array(argv) + measure_array(envp);
+	n = measure_array(argv) + size + measure_array(envp);
 	t (!(msg = malloc(n + sizeof(int) + sizeof(clk) + sizeof(ts))));
-	store_array(store_array(msg, argv), envp);
+	store_array(getcwd(store_array(msg, argv), size) + size, envp);
 	memcpy(msg + n, &argc, sizeof(int)), n += sizeof(int);
 	memcpy(msg + n, &clk,  sizeof(clk)), n += sizeof(clk);
 	memcpy(msg + n, &ts,   sizeof(ts)),  n += sizeof(ts);
