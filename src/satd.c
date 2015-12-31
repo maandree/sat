@@ -48,7 +48,7 @@ USAGE("[-f]")
 
 
 /**
- * Create the socket, but not its directory.
+ * Create the socket.
  * 
  * @param   address  Output parameter for the socket address.
  * @return           The file descriptor for the socket, -1 on error.
@@ -89,11 +89,7 @@ fail:
 
 
 /**
- * Create the state file, and its directory.
- * 
- * This will also check that the daemon is not
- * running. The daemon holds a shared lock on
- * the state file.
+ * Create the state file.
  * 
  * @return  A file descriptor to the state file, -1 on error.
  */
@@ -102,34 +98,58 @@ create_state(void)
 {
 	const char *dir;
 	char *path;
-	char *p;
-	int fd, saved_errno;
+	int fd = -1, saved_errno;
 
 	/* Create directory. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
 	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/" PACKAGE "/state"))));
+	stpcpy(stpcpy(path, dir), "/" PACKAGE "/state");
+	t (fd = open(path, O_RDWR | O_CREAT /* but not O_EXCL or O_TRUNC */, S_IRUSR | S_IWUSR), fd == -1);
+
+fail:
+	saved_errno = errno;
+	free(path);
+	errno = saved_errno;
+	return fd;
+}
+
+
+/**
+ * Create and lock the lock file, and its directory.
+ * 
+ * @return  A file descriptor to the lock file, -1 on error.
+ */
+static int
+create_lock(void)
+{
+	const char *dir;
+	char *path;
+	char *p;
+	int fd = -1, saved_errno;
+
+	/* Create directory. */
+	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
+	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/" PACKAGE "/lock"))));
 	p = stpcpy(stpcpy(path, dir), "/" PACKAGE);
 	t (mkdir(path, S_IRWXU) && (errno != EEXIST));
 
 	/* Open file. */
-	stpcpy(p, "/state");
-	t (fd = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRUSR | S_IWUSR), fd == -1);
-	free(path), path = NULL;
+	stpcpy(p, "/lock");
+	t (fd = open(path, O_RDWR | O_CREAT /* but not O_EXCL or O_TRUNC */, S_IRUSR | S_IWUSR), fd == -1);
 
 	/* Check that the daemon is not running, and mark it as running. */
 	if (flock(fd, LOCK_EX | LOCK_NB)) {
-		t (errno != EWOULDBLOCK);
+		t (fd = -1, errno != EWOULDBLOCK);
 		fprintf(stderr, "%s: the daemon's state file is already in use.\n", argv0);
 		errno = 0;
 		goto fail;
 	}
 
-	return fd;
 fail:
 	saved_errno = errno;
 	free(path);
 	errno = saved_errno;
-	return -1;
+	return fd;
 }
 
 
@@ -230,7 +250,7 @@ main(int argc, char *argv[])
 	t (path = path ? path : hookpath(PRE, SUF), !path && errno)
 
 	struct sockaddr_un address;
-	int sock = -1, state = -1, boot = -1, real = -1, foreground = 0;
+	int sock = -1, state = -1, boot = -1, real = -1, lock = -1, foreground = 0;
 	char *path = NULL;
 	struct itimerspec spec;
 
@@ -250,7 +270,8 @@ main(int argc, char *argv[])
 		free(path), path = NULL;
 	}
 
-	/* Open/create state file, and create socket. */
+	/* Open/create lock file and state file, and create socket. */
+	GET_FD(lock,  LOCK_FILENO,  create_lock());
 	GET_FD(state, STATE_FILENO, create_state());
 	GET_FD(sock,  SOCK_FILENO,  create_socket(&address));
 
@@ -271,7 +292,7 @@ main(int argc, char *argv[])
 #endif
 
 	/* Daemonise. */
-	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, -1));
+	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, 7, -1));
 
 	/* Change to a process image without all this initialisation text. */
 	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, address.sun_path, NULL);
@@ -287,6 +308,7 @@ fail:
 	if (state >= 0)  close(state);
 	if (boot  >= 0)  close(boot);
 	if (real  >= 0)  close(real);
+	if (lock  >= 0)  close(lock);
 	undaemonise();
 	return 1;
 }

@@ -102,3 +102,7 @@ _EVERYTHING = $(foreach F,$(___EVERYTHING_INFO),doc/info/$(F).texinfo)  \
 # All of the make rules and the configurations.
 include $(v)mk/all.mk
 
+ifdef DEBUG
+_CPPFLAGS += -DDEBUG=1
+endif
+

@@ -65,7 +65,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
 	if (strlen(dir) + sizeof("/" PACKAGE "/socket") > sizeof(address.sun_path))
 		t ((errno = ENAMETOOLONG));
-	stpcpy(stpcpy(address.sun_path, dir), "/" PACKAGE "/state"); /* Yes, "state", It is temporary. */
+	stpcpy(stpcpy(address.sun_path, dir), "/" PACKAGE "/lock"); /* Yes, "lock", It is temporary. */
 	address.sun_family = AF_UNIX;
 
 	/* Any daemon listening? */

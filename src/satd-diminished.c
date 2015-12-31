@@ -113,10 +113,10 @@ fork_again:
 			goto child_fail;
 		}
 		if (command < 0) {
-			close(SOCK_FILENO);
+			close(SOCK_FILENO), close(LOCK_FILENO);
 			execve(image, argv, envp);
 		} else {
-			close(BOOT_FILENO), close(REAL_FILENO);
+			close(BOOT_FILENO), close(REAL_FILENO), close(LOCK_FILENO);
 			if (dup2(fd, SOCK_FILENO) != -1)
 				close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
 		}

@@ -63,6 +63,8 @@ main(int argc, char *argv[])
 	struct job **job;
 	int rc = 0;
 
+	t (reopen(STATE_FILENO, O_RDWR));
+
 	/* Get current expiration time. */
 	t (timerfd_gettime(BOOT_FILENO, &bootspec));
 	t (timerfd_gettime(REAL_FILENO, &realspec));
@@ -88,6 +90,7 @@ done:
 	for (job = jobs; *job; job++)
 		free(*job);
 	free(jobs);
+	close(STATE_FILENO);
 	return rc;
 fail:
 	perror(argv[0]);

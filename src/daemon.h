@@ -55,6 +55,11 @@
  */
 #define REAL_FILENO  6
 
+/**
+ * The file descriptor for the lock file.
+ */
+#define LOCK_FILENO  7
+
 
 /**
  * Command: queue a job.
@@ -84,7 +89,13 @@
  * 
  * @param  ...  The statement.
  */
-# define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
+# ifdef DEBUG
+#  define t(...)  do { if ((__VA_ARGS__) ? (failed__ = #__VA_ARGS__) : 0) { (perror)(failed__); goto fail; } } while (0)
+static const char *failed__ = NULL;
+#  define perror(_)  ((void)(_))
+# else
+#  define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
+# endif
 #endif
 
 
