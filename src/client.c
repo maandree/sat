@@ -59,7 +59,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	ssize_t r, wrote;
 	char *buf = NULL;
 	signed char cmd_ = (signed char)cmd;
-	int saved_errno;
+	int eot = 0, saved_errno;
 
 	/* Get socket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
@@ -118,6 +118,7 @@ receive_again:
 	outfd = (int)cmd_;
 	goterr |= outfd == STDERR_FILENO;
 	t (r = read(fd, &n, sizeof(n)), r < (ssize_t)sizeof(n));
+	eot = (outfd == 127) & !n;
 	t (!(buf = malloc(n)));
 	while (n) {
 		t (r = read(fd, buf, n), r < 0);
@@ -143,6 +144,8 @@ fail:
 		close(fd);
 	free(buf);
 	errno = saved_errno;
+	if (eot)
+		goto done;
 	return -1;
 }
 

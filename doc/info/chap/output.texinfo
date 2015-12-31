@@ -61,6 +61,11 @@ is all arguments in the job's command line, including
 @item ENVP
 is all environment variables. Each entry is quoted if
 necessary so it can be pasted to the shell and used
-with @command{env}.
+with @command{env}. Because this use usally a lot of
+data, which you usually are not interrested in, it
+can be a good idea to pipe the output of @command{satq}
+to @command{grep -v '^  envp:'}. If you do this,
+you should be aware that @command{grep} will fail
+if there is no output.
 @end table
 
