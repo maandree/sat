@@ -53,9 +53,8 @@ main(int argc, char *argv[])
 		for (arg = msg_argv; *arg; arg++)
 			t (remove_job(*arg, 1) && errno);
 	} else {
-		for (;;)
-			if (remove_job(NULL, 1))
-				t (errno);
+		while (!remove_job(NULL, 1));
+		t (errno);
 	}
 
 	DAEMON_CLEANUP_START;

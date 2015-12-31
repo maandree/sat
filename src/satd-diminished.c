@@ -71,10 +71,17 @@ static void
 sighandler(int signo)
 {
 	int saved_errno = errno;
-	if ((signo == SIGCHLD) && (waitpid(-1, NULL, WNOHANG) == timer_pid))
-		timer_pid = NO_TIMER_SPAWNED;
-	else
+	pid_t pid;
+	if (signo == SIGCHLD) {
+		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+			if (pid == timer_pid)
+				timer_pid = NO_TIMER_SPAWNED;
+			else
+				received_signo = (sig_atomic_t)signo;
+		}
+	} else {
 		received_signo = (sig_atomic_t)signo;
+	}
 	errno = saved_errno;
 }
 
@@ -166,7 +173,7 @@ test_timer(int fd, const fd_set *fdset)
 	};
 	if (!FD_ISSET(BOOT_FILENO, fdset))                return 0;
 	if (read(BOOT_FILENO, &_overrun, (size_t)8) < 8)  return -1;
-	if (timer_pid == NO_TIMER_SPAWNED)                 return 0;
+	if (timer_pid == NO_TIMER_SPAWNED)                return 0;
 	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &spec, NULL);
 }
 
@@ -195,6 +202,7 @@ main(int argc, char *argv[], char *envp[])
 
 	/* The magnificent loop. */
 again:
+#if 0 || !defined(DEBUG)
 	if (accepted && (timer_pid == NO_TIMER_SPAWNED)) {
 		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
 		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
@@ -206,6 +214,7 @@ again:
 		goto done;
 	 }
 not_done:
+#endif
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_IMAGE("diminished"), argv, envp);
 		perror(argv[0]);
@@ -215,11 +224,10 @@ not_done:
 	received_signo = 0;
 	FD_ZERO(&fdset);
 	FD_SET(SOCK_FILENO, &fdset);
-	FD_SET(BOOT_FILENO, &fdset);
-	FD_SET(REAL_FILENO, &fdset); /* This is the highest one. */
-	if (select(REAL_FILENO + 1, &fdset, NULL, NULL, NULL) == -1) {
+	// FIXME ---- FD_SET(BOOT_FILENO, &fdset);
+	// FIXME ---- FD_SET(REAL_FILENO, &fdset); /* This is the highest one. */
+	if (select(REAL_FILENO + 1, &fdset, NULL, NULL, NULL) == -1)
 		t (errno != EINTR);
-	}
 	t (test_timer(BOOT_FILENO, &fdset));
 	t (test_timer(REAL_FILENO, &fdset));
 	if (!FD_ISSET(SOCK_FILENO, &fdset))

@@ -32,6 +32,7 @@ either
 .B failure
 if the job was not executed successfully, including if
 the job exited with any status other than zero, or
+.TP
 .B success
 if the job was executed successfully and exited with
 status zero.
@@ -40,6 +41,10 @@ When a job is removed using
 .BR satrm (1),
 the hook script is run with the action
 .BR removed .
+When a job is queued using
+.BR sat (1),
+the hook script is run with the action
+.BR queued .
 .PP
 When the hook script runs, the first argument (not
 counting the zeroth argument: the pathname of hook

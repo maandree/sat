@@ -118,12 +118,15 @@ strduration(char *buffer, time_t s)
 	if (s) {
 		buf += sprintf(buf, "%llid", (long long int)s);
 		buf += sprintf(buf, "%02i:", hours);
-		buf += sprintf(buf, "%02i", minutes);
+		buf += sprintf(buf, "%02i:", minutes);
 	} else if (hours) {
 		buf += sprintf(buf, "%i:", hours);
-		buf += sprintf(buf, "%02i", minutes);
+		buf += sprintf(buf, "%02i:", minutes);
 	} else if (minutes) {
-		buf += sprintf(buf, "%i", minutes);
+		buf += sprintf(buf, "%i:", minutes);
+	} else {
+		sprintf(buf, "%i", seconds);
+		return;
 	}
 	sprintf(buf, "%02i", seconds);
 }
@@ -145,7 +148,7 @@ send_job_human(struct job *job)
 	char *qstr = NULL;
 	char line[sizeof("job: %zu clock: unrecognised argc: %i remaining: , argv[0]: ")
 		  + 3 * sizeof(size_t) + 3 * sizeof(int) + sizeof(rem_s) + 9];
-	char timestr_a[sizeof("0000-00-00 00:00:00") + 3 * sizeof(time_t)];
+	char timestr_a[sizeof("-00-00 00:00:00") + 3 * sizeof(time_t)];
 	char timestr_b[10];
 	char **args = NULL;
 	char **arg;
@@ -157,8 +160,8 @@ send_job_human(struct job *job)
 	/* Get remaining time. */
 	if (clock_gettime(job->clk, &rem))
 		return errno == EINVAL ? 0 : -1;
-	rem.tv_sec  -= job->ts.tv_sec;
-	rem.tv_nsec -= job->ts.tv_nsec;
+	rem.tv_sec  = job->ts.tv_sec  - rem.tv_sec;
+	rem.tv_nsec = job->ts.tv_nsec - rem.tv_nsec;
 	if (rem.tv_nsec < 0) {
 		rem.tv_sec -= 1;
 		rem.tv_nsec += 1000000000L;

@@ -92,10 +92,6 @@ strtotime(const char *str, const char **end)
 	time_t rc;
 	long long int rcll;
 	long int rcl;
-	char **end_ = (char **)end;
-#ifdef __GNUC__
-# pragma GCC diagnostic pop
-#endif
 
 	if (!isdigit(*str))
 		FAIL(EINVAL);
@@ -106,14 +102,17 @@ strtotime(const char *str, const char **end)
 
 	errno = 0;
 	if (sizeof(time_t) == sizeof(long long int)) {
-		rcll = strtoll(str, end_, 10);
+		rcll = strtoll(str, (char **)end, 10);
 		rc = (time_t)rcll;
 	} else {
-		rcl = strtol(str, end_, 10);
+		rcl = strtol(str, (char **)end, 10);
 		rc = (time_t)rcl;
 	}
 
 	return errno ? 0 : rc;
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 }
 
 
@@ -149,13 +148,10 @@ parse_time_time(const char *str, struct timespec *ts, const char **end)
 	MUL(tm, (time_t)60);
 	ADD(ts->tv_sec, tm);
 
-	switch (*str++) {
-	case 0:    return 0;
-	case ':':  break;
-	default:   FAIL(EINVAL);
-	}
+	if (*str++ != ':')
+		return 0;
 
-	tm = strtotime(str, end), str = *end;
+	tm = strtotime(str, end);
 	t (errno);
 	/* Do not restrict to 59, or 60, there can be more than +1 leap second. */
 	ADD(ts->tv_sec, tm);
@@ -219,8 +215,8 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	time_t adj;
 
 	/* Get current time and clock. */
-	clock_gettime(CLOCK_REALTIME, &now);
 	*clk = plus ? CLOCK_BOOTTIME : CLOCK_REALTIME;
+	clock_gettime(*clk, &now);
 
 	/* Mañana? */
 	if (!strcmp(str, "mañana")) { /* Do not documented. */
@@ -239,33 +235,30 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	}
 	str = end;
 
-	/* Any fractions of a second? */
-	switch (*str) {
-	case 0:    return 0;
-	case '.':  break;
-	default:   FAIL(EINVAL);
-	}
-
 	/* Parse up to nanosecond resolution. */
-	for (points = 0; isdigit(*str); points++) {
+	if (*str != '.')
+		goto no_nanoseconds;
+	for (points = 0, str++; isdigit(*str); points++, str++) {
 		if (points < 9) {
 			ts->tv_nsec *= 10;
-			ts->tv_nsec += *str++ & 15;
-		} else if ((points == 10) && (*str >= '5')) {
+			ts->tv_nsec += *str & 15;
+		} else if ((points == 9) && (*str >= '5')) {
 			ts->tv_nsec += 1;
 		}
 	}
+	while (points++ < 9)  ts->tv_nsec *= 10;
 	if (ts->tv_nsec > 999999999L) {
 		ts->tv_sec += 1;
 		ts->tv_nsec = 0;
 	}
+no_nanoseconds:
 
 	/* Check for error at end, and missing explicit UTC. */
 	if (*str) {
 		if (*clk == CLOCK_BOOTTIME)
 			FAIL(EINVAL);
 		while (*str == ' ')  str++;
-		if (!strcasecmp(str, "Z") && !strcasecmp(str, "UTC"))
+		if (strcasecmp(str, "Z") && strcasecmp(str, "UTC"))
 			FAIL(EINVAL);
 	} else if (*clk == CLOCK_REALTIME) {
 		fprintf(stderr,
@@ -273,10 +266,16 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 		        "by adding a 'Z' at the end of the time argument.\n", argv0);
 	}
 
-	/* Adjust the day? */
-	if (*clk == CLOCK_BOOTTIME)
+	/* Add offset or djust the day? */
+	if (*clk == CLOCK_BOOTTIME) {
+		ts->tv_sec += now.tv_sec;
+		ts->tv_nsec += now.tv_nsec;
+		if (ts->tv_nsec >= 1000000000L) {
+			ts->tv_sec += 1;
+			ts->tv_nsec -= 1000000000L;
+		}
 		return 0;
-	if (ts->tv_sec < now.tv_sec) { /* Ignore partial second. */
+	} else if (ts->tv_sec < now.tv_sec) { /* Ignore partial second. */
 		ts->tv_sec += ONE_DAY;
 		if (ts->tv_sec < now.tv_sec)
 			FAIL(EDOM);

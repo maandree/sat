@@ -1,0 +1,3 @@
+We probably shall save the working directory too.
+The daemon shall always send an ACK when it is done.
+

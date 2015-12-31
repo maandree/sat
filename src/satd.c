@@ -91,10 +91,11 @@ fail:
 /**
  * Create the state file.
  * 
- * @return  A file descriptor to the state file, -1 on error.
+ * @param   state_path  Output parameter for the state file's pathname.
+ * @return              A file descriptor to the state file, -1 on error.
  */
 static int
-create_state(void)
+create_state(char **state_path)
 {
 	const char *dir;
 	char *path;
@@ -105,6 +106,7 @@ create_state(void)
 	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/" PACKAGE "/state"))));
 	stpcpy(stpcpy(path, dir), "/" PACKAGE "/state");
 	t (fd = open(path, O_RDWR | O_CREAT /* but not O_EXCL or O_TRUNC */, S_IRUSR | S_IWUSR), fd == -1);
+	*state_path = path, path = NULL;
 
 fail:
 	saved_errno = errno;
@@ -272,7 +274,7 @@ main(int argc, char *argv[])
 
 	/* Open/create lock file and state file, and create socket. */
 	GET_FD(lock,  LOCK_FILENO,  create_lock());
-	GET_FD(state, STATE_FILENO, create_state());
+	GET_FD(state, STATE_FILENO, create_state(&path));
 	GET_FD(sock,  SOCK_FILENO,  create_socket(&address));
 
 	/* Create timers. */
@@ -295,7 +297,7 @@ main(int argc, char *argv[])
 	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, 7, -1));
 
 	/* Change to a process image without all this initialisation text. */
-	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, address.sun_path, NULL);
+	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, address.sun_path, path, NULL);
 
 fail:
 	if (errno)

@@ -117,13 +117,13 @@ int
 readall(int fd, char **buf, size_t *n)
 {
 	char *buffer = NULL;
-	size_t ptr = 0, size = 0;
+	size_t ptr = 0, size = 128;
 	ssize_t got = 1;
 	char *new;
 	int saved_errno;
 
 	for (; got; ptr += (size_t)got) {
-		if (ptr == size) {
+		if ((buffer == NULL) || (ptr == size)) {
 			t (!(new = realloc(buffer, size <<= 1)));
 			buffer = new;
 		}
@@ -131,7 +131,7 @@ readall(int fd, char **buf, size_t *n)
 	}
 
 	new = realloc(buffer, ptr);
-	*buf = new ? new : buffer;
+	*buf = ptr ? (new ? new : buffer) : NULL;
 	*n = ptr;
 	shutdown(SOCK_FILENO, SHUT_RD);
 	return 0;
@@ -167,7 +167,7 @@ restore_array(char *buf, size_t len, size_t *n)
 	t (!rc);
 	while (i < len) {
 		rc[e++] = buf + i;
-		i += strlen(buf + i);
+		i += strlen(buf + i) + 1;
 	}
 	rc[e] = NULL;
 	new = realloc(rc, (e + 1) * sizeof(char*));
@@ -280,6 +280,7 @@ run_job_or_hook(struct job *job, const char *hook)
 	t (!(args = restore_array(job->payload, job->n, &argsn)));
 	t (!(argv = sublist(args, (size_t)(job->argc))));
 	t (!(envp = sublist(args + job->argc, argsn - (size_t)(job->argc))));
+	free(args), args = NULL;
 
 	if (hook) {
 		t (!(new = realloc(argv, ((size_t)(job->argc) + 3) * sizeof(*argv))));
@@ -298,7 +299,7 @@ run_job_or_hook(struct job *job, const char *hook)
 		close(BOOT_FILENO);
 		close(REAL_FILENO);
 		environ = envp;
-		execve(*argv, argv, envp);
+		execvp(*argv, argv);
 		exit(1);
 	default:
 		t (waitpid(pid, &status, 0) != pid);
@@ -350,12 +351,12 @@ remove_job(const char *jobno, int runjob)
 			goto found_it;
 	}
 	t (flock(STATE_FILENO, LOCK_UN));
-	return 0;
+	return errno = 0, -1;
 
 found_it:
 	job_full = malloc(sizeof(job) + job.n);
 	*job_full = job;
-	t (preadn(STATE_FILENO, job_full->payload, job.n, off) < (ssize_t)(job.n));
+	t (preadn(STATE_FILENO, job_full->payload, job.n, off + sizeof(job)) < (ssize_t)(job.n));
 	n -= off + sizeof(job) + job.n;
 	t (!(buf = malloc(n)));
 	t (r = preadn(STATE_FILENO, buf, n, off + sizeof(job) + job.n), r < 0);
@@ -411,7 +412,7 @@ get_jobs(void)
 	while (off < n) {
 		t (preadn(STATE_FILENO, &job, sizeof(job), off) < (ssize_t)sizeof(job));
 		off += sizeof(job);
-		t (!(js[j] = malloc(sizeof(job) + sizeof(job.n))));
+		t (!(js[j] = malloc(sizeof(job) + job.n)));
 		*(js[j]) = job;
 		t (preadn(STATE_FILENO, js[j++]->payload, job.n, off) < (ssize_t)(job.n));
 		off += job.n;

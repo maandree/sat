@@ -103,6 +103,16 @@ _EVERYTHING = $(foreach F,$(___EVERYTHING_INFO),doc/info/$(F).texinfo)  \
 include $(v)mk/all.mk
 
 ifdef DEBUG
-_CPPFLAGS += -DDEBUG=1
+ifneq ($(DEBUG),strace)
+ifneq ($(DEBUG),valgrind)
+_CPPFLAGS += -DDEBUG='1'
+endif
+endif
+ifeq ($(DEBUG),strace)
+_CPPFLAGS += -DDEBUG='2'
+endif
+ifeq ($(DEBUG),valgrind)
+_CPPFLAGS += -DDEBUG='3'
+endif
 endif
 

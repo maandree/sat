@@ -16,6 +16,8 @@ arguments are job's command line arguments including the
 zeroth argument (the name of the command). Possible actions
 are:
 @table @code
+@item queued
+The job with queued using @command{sat}.
 @item expired
 The job will run momentarily as scheduled.
 @item forced
@@ -38,7 +40,7 @@ is to use the script
 #!/bin/sh
 action="$1"
 shift 1
-exec wall -n "sat: $action: $JOBNAME ($*)"
+exec wall "sat: $action: $JOBNAME ($*)"
 @end example
 @noindent
 and always set the environment variable @env{JOBNAME}

@@ -65,7 +65,7 @@ main(int argc, char *argv[], char *envp[])
 		switch (errno) {
 		case EINVAL:
 			fprintf(stderr,
-			        "%s: time parameter cound not be parsed, perhaps you "
+			        "%s: time parameter cound not be parsed, perhaps "
 			        "you need an external parser: %s\n", argv0, argv[1]);
 			return 2;
 		case ERANGE:

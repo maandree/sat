@@ -73,7 +73,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	if (fd == -1) {
 		t ((errno != ENOENT) && (errno != ENOTDIR));
 	} else {
-		if (flock(fd, LOCK_EX | LOCK_NB /* and LOCK_DRY if that was ever added... */))
+		if (flock(fd, LOCK_SH | LOCK_NB /* and LOCK_DRY if that was ever added... */))
 			t (start = 0, errno != EWOULDBLOCK);
 		else
 			flock(fd, LOCK_UN);

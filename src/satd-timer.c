@@ -74,7 +74,7 @@ main(int argc, char *argv[])
 	t (clock_gettime(CLOCK_REALTIME, &realnow));
 	t (!(jobs = get_jobs()));
 	for (job = jobs; *job; job++) {
-		if (timecmp(&(job[0]->ts), TIME(*job, now)) >= 0) {
+		if (timecmp(&(job[0]->ts), TIME(*job, now)) <= 0) {
 			sprintf(jobno, "%zu", job[0]->no);
 			remove_job(jobno, 2);
 		} else if (timecmp(&(job[0]->ts), &(TIME(*job, spec)->it_value)) > 0) {
