@@ -140,7 +140,7 @@ create_lock(void)
 	/* Check that the daemon is not running, and mark it as running. */
 	if (flock(fd, LOCK_EX | LOCK_NB)) {
 		t (fd = -1, errno != EWOULDBLOCK);
-		fprintf(stderr, "%s: the daemon's state file is already in use.\n", argv0);
+		fprintf(stderr, "%s: the daemon is already in reading.\n", argv0);
 		errno = 0;
 		goto fail;
 	}
