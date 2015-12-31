@@ -60,7 +60,7 @@ static char* __pidfile = NULL;
  */
 static int dup_at_least_3(int old)
 {
-  int intermediary[] = { -1, -1, -1 };
+  int intermediary[3];
   int i = 0, saved_errno;
   
   do
@@ -73,12 +73,12 @@ static int dup_at_least_3(int old)
       intermediary[i++] = old;
     }
   while (old < 3);
+  i--;
   
  fail:
   saved_errno = errno;
-  if (intermediary[0] >= 0)  close(intermediary[0]);
-  if (intermediary[1] >= 0)  close(intermediary[1]);
-  if (intermediary[2] >= 0)  close(intermediary[2]);
+  while (i--)
+    close(intermediary[i]);
   errno = saved_errno;
   return old;
 }
@@ -167,6 +167,7 @@ static int dup_at_least_3(int old)
  *                 -  `DAEMONISE_KEEP_STDIN`
  *                 -  `DAEMONISE_KEEP_STDOUT`
  *                 -  `DAEMONISE_KEEP_FDS`
+ *                 -  `DAEMONISE_NEW_PID`
  * @param   ...    Enabled if `DAEMONISE_KEEP_FDS` is used,
  *                 do not add anything if `DAEMONISE_KEEP_FDS`
  *                 is unused. This is a `-1`-terminated list
@@ -182,9 +183,10 @@ static int dup_at_least_3(int old)
  *                  has exited without removing the PID file.
  * @throws  EINVAL  `flags` contains an unsupported bit, both
  *                  `DAEMONISE_KEEP_STDERR` and `DAEMONISE_CLOSE_STDERR`
- *                  are set, or both `DAEMONISE_CLOSE_STDERR` and
- *                  `DAEMONISE_KEEP_FDS` are set whilst `2` is
- *                  in the list of file descriptor not to close,
+ *                  are set, both `DAEMONISE_NO_PID_FILE` and
+ *                  `DAEMONISE_NEW_PID`, or both `DAEMONISE_CLOSE_STDERR`
+ *                  and `DAEMONISE_KEEP_FDS` are set whilst `2` is
+ *                  in the list of file descriptor not to close.
  * @throws          Any error specified for signal(3).
  * @throws          Any error specified for sigemptyset(3).
  * @throws          Any error specified for sigprocmask(3).
@@ -218,20 +220,22 @@ int daemonise(const char* name, int flags, ...)
   
   
   /* Validate flags. */
-  if (flags & ~2047)
+  if (flags & (int)~(2048L * 2 - 1))
     return errno = EINVAL, -1;
-  if (flags & DAEMONISE_KEEP_STDERR)
-    if (flags & DAEMONISE_CLOSE_STDERR)
+  if ((flags & DAEMONISE_KEEP_STDERR) && (flags & DAEMONISE_CLOSE_STDERR))
+      return errno = EINVAL, -1;
+  if ((flags & DAEMONISE_NO_PID_FILE) && (flags & DAEMONISE_NEW_PID))
       return errno = EINVAL, -1;
   
   
   /* Find out which file descriptors not too close. */
-  if ((flags & DAEMONISE_KEEP_FDS) == 0)
+  if (flags & DAEMONISE_KEEP_FDS)
     {
       va_start(args, flags);
-      while (va_arg(args, int) >= 0)
+      while ((fd = va_arg(args, int)) >= 0)
 	if ((fd > 2) && (keepmax < fd))
 	  keepmax = fd;
+      fd = -1;
       va_end(args);
       keep = calloc((size_t)keepmax + 1, sizeof(char));
       t (keep == NULL);
@@ -249,8 +253,8 @@ int daemonise(const char* name, int flags, ...)
 	    keep[fd] = 1;
 	    break;
 	  }
-      va_end(args);
       fd = -1;
+      va_end(args);
     }
   /* We assume that the maximum file descriptor is not extremely large.
    * We also assume the number of file descriptors too keep is very small,
@@ -264,7 +268,7 @@ int daemonise(const char* name, int flags, ...)
       for (i = 3; (rlim_t)i < rlimit.rlim_cur; i++)
 	/* File descriptors with numbers above and including
 	 * `rlimit.rlim_cur` cannot be created. They cause EBADF. */
-	if ((keep == NULL) || (keep[i] == 0))
+	if ((i > keepmax) || (keep[i] == 0))
 	  close(i);
     }
   free(keep), keep = NULL;
@@ -272,7 +276,8 @@ int daemonise(const char* name, int flags, ...)
   /* Reset all signal handlers. */
   if ((flags & DAEMONISE_NO_SIG_DFL) == 0)
     for (i = 1; i < _NSIG; i++)
-      t (signal(i, SIG_DFL) == SIG_ERR);
+      if (signal(i, SIG_DFL) == SIG_ERR)
+	t (errno != EINVAL);
   
   /* Set signal mask. */
   if ((flags & DAEMONISE_KEEP_SIGMASK) == 0)
@@ -337,7 +342,7 @@ int daemonise(const char* name, int flags, ...)
       t (__pidfile == NULL);
       stpcpy(stpcpy(stpcpy(__pidfile, "/run/"), name), ".pid");
     }
-  fd = open(__pidfile, O_WRONLY | O_CREAT | O_EXCL, 0644);
+  fd = open(__pidfile, O_WRONLY | O_CREAT | ((flags & DAEMONISE_NEW_PID) ? 0 : O_EXCL), 0644);
   if (fd == -1)
     {
       saved_errno = errno;

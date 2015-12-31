@@ -50,6 +50,8 @@
 
 /**
  * Do not create a PID file.
+ * 
+ * Cannot be combined with `DAEMONISE_NEW_PID`.
  */
 #define DAEMONISE_NO_PID_FILE  32
 
@@ -57,7 +59,7 @@
  * Do not close stderr even if it is
  * a terminal device.
  * 
- * Cannot be combined with `DAEMONISE_KEEP_STDERR`.
+ * Cannot be combined with `DAEMONISE_CLOSE_STDERR`.
  */
 #define DAEMONISE_KEEP_STDERR  64
 
@@ -84,6 +86,16 @@
  * file descritors to keep open.
  */
 #define DAEMONISE_KEEP_FDS  1024
+
+/**
+ * Override the PID file if it already exists,
+ * rather than failing. It is a bad idea to do
+ * this unless you already made sure that the
+ * daemon is not already running.
+ * 
+ * Cannot be combined with `DAEMONISE_NO_PID_FILE`.
+ */
+#define DAEMONISE_NEW_PID  2048
 
 
 
@@ -167,6 +179,7 @@
  *                 -  `DAEMONISE_KEEP_STDIN`
  *                 -  `DAEMONISE_KEEP_STDOUT`
  *                 -  `DAEMONISE_KEEP_FDS`
+ *                 -  `DAEMONISE_NEW_PID`
  * @param   ...    Enabled if `DAEMONISE_KEEP_FDS` is used,
  *                 do not add anything if `DAEMONISE_KEEP_FDS`
  *                 is unused. This is a `-1`-terminated list
@@ -182,8 +195,9 @@
  *                  has exited without removing the PID file.
  * @throws  EINVAL  `flags` contains an unsupported bit, both
  *                  `DAEMONISE_KEEP_STDERR` and `DAEMONISE_CLOSE_STDERR`
- *                  are set, or both `DAEMONISE_CLOSE_STDERR` and
- *                  `DAEMONISE_KEEP_FDS` are set whilst `2` is
+ *                  are set, both `DAEMONISE_NO_PID_FILE` and
+ *                  `DAEMONISE_NEW_PID`, or both `DAEMONISE_CLOSE_STDERR`
+ *                  and `DAEMONISE_KEEP_FDS` are set whilst `2` is
  *                  in the list of file descriptor not to close.
  * @throws          Any error specified for signal(3).
  * @throws          Any error specified for sigemptyset(3).

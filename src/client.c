@@ -63,17 +63,17 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 
 	/* Get socket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	if (strlen(dir) + sizeof("/satd.socket") > sizeof(address.sun_path))
+	if (strlen(dir) + sizeof("/" PACKAGE "/socket") > sizeof(address.sun_path))
 		t ((errno = ENAMETOOLONG));
-	stpcpy(stpcpy(address.sun_path, dir), "/satd.socket");
+	stpcpy(stpcpy(address.sun_path, dir), "/" PACKAGE "/state"); /* Yes, "state", It is temporary. */
 	address.sun_family = AF_UNIX;
 
 	/* Any daemon listening? */
 	fd = open(address.sun_path, O_RDONLY);
 	if (fd == -1) {
-		t (errno != ENOENT);
+		t ((errno != ENOENT) && (errno != ENOTDIR));
 	} else {
-		if (flock(fd, LOCK_SH | LOCK_NB) == -1)
+		if (flock(fd, LOCK_EX | LOCK_NB /* and LOCK_DRY if that was ever added... */))
 			t (start = 0, errno != EWOULDBLOCK);
 		else
 			flock(fd, LOCK_UN);
@@ -97,6 +97,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	}
 
 	/* Create socket. */
+	stpcpy(strrchr(address.sun_path, '/'), "/socket");
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
 	t (connect(fd, (const struct sockaddr *)(_cvoid = &address), (socklen_t)sizeof(address)) == -1);
 

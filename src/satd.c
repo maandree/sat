@@ -48,7 +48,7 @@ USAGE("[-f]")
 
 
 /**
- * Create the socket.
+ * Create the socket, but not its directory.
  * 
  * @param   address  Output parameter for the socket address.
  * @return           The file descriptor for the socket, -1 on error.
@@ -63,36 +63,18 @@ create_socket(struct sockaddr_un *address)
 
 	/* Get socket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	if (strlen(dir) + sizeof("/satd.socket") > sizeof(address->sun_path))
+	if (strlen(dir) + sizeof("/" PACKAGE "/socket") > sizeof(address->sun_path))
 		t ((errno = ENAMETOOLONG));
-	stpcpy(stpcpy(address->sun_path, dir), "/satd.socket");
+	stpcpy(stpcpy(address->sun_path, dir), "/" PACKAGE "/socket");
 	address->sun_family = AF_UNIX;
-
-	/* Check that no living process owns the socket. */
-	fd = open(address->sun_path, O_RDONLY);
-	if (fd == -1) {
-		t (errno != ENOENT);
-		goto does_not_exist;
-	} else if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-		t (errno != EWOULDBLOCK);
-		fprintf(stderr, "%s: the daemon's socket file is already in use.\n", argv0);
-		errno = 0;
-		goto fail;
-	}
 
 	/* Create socket. */
 	unlink(address->sun_path);
-	flock(fd, LOCK_UN);
-	close(fd), fd = -1;
-does_not_exist:
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
 	t (fchmod(fd, S_IRWXU) == -1);
 	t (bind(fd, (const struct sockaddr *)(_cvoid = address), (socklen_t)sizeof(*address)) == -1);
 	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
 	bound = 1;
-
-	/* Mark the socket as owned by a living process. */
-	t (flock(fd, LOCK_SH));
 
 	return fd;
 fail:
@@ -101,6 +83,51 @@ fail:
 		close(fd);
 	if (bound)
 		unlink(address->sun_path);
+	errno = saved_errno;
+	return -1;
+}
+
+
+/**
+ * Create the state file, and its directory.
+ * 
+ * This will also check that the daemon is not
+ * running. The daemon holds a shared lock on
+ * the state file.
+ * 
+ * @return  A file descriptor to the state file, -1 on error.
+ */
+static int
+create_state(void)
+{
+	const char *dir;
+	char *path;
+	char *p;
+	int fd, saved_errno;
+
+	/* Create directory. */
+	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
+	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/" PACKAGE "/state"))));
+	p = stpcpy(stpcpy(path, dir), "/" PACKAGE);
+	t (mkdir(path, S_IRWXU) && (errno != EEXIST));
+
+	/* Open file. */
+	stpcpy(p, "/state");
+	t (fd = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRUSR | S_IWUSR), fd == -1);
+	free(path), path = NULL;
+
+	/* Check that the daemon is not running, and mark it as running. */
+	if (flock(fd, LOCK_EX | LOCK_NB)) {
+		t (errno != EWOULDBLOCK);
+		fprintf(stderr, "%s: the daemon's state file is already in use.\n", argv0);
+		errno = 0;
+		goto fail;
+	}
+
+	return fd;
+fail:
+	saved_errno = errno;
+	free(path);
 	errno = saved_errno;
 	return -1;
 }
@@ -159,16 +186,16 @@ fail:
 static int
 dup2_and_null(int old, int new)
 {
-	int want, fd = -1;
+	int fd = -1;
 	int saved_errno;
 
 	if (old == new)  goto done;
 	t (dup2(old, new) == -1);
-	close(old), want = old;
-	if (want >= 3)   goto done;
+	close(old);
+	if (old >= 3)   goto done;
 	t (fd = open("/dev/null", O_RDWR), fd == -1);
-	if (fd == want)  goto done;
-	t (dup2(fd, want) == -1);
+	if (fd == old)  goto done;
+	t (dup2(fd, old) == -1);
 	close(fd), fd = -1;
 
 done:
@@ -195,11 +222,17 @@ fail:
 int
 main(int argc, char *argv[])
 {
+#define GET_FD(FD, WANT, CALL)              \
+	t (FD = CALL, FD == -1);            \
+	t (dup2_and_null(FD, WANT) == -1);  \
+	FD = WANT
+#define HOOKPATH(PRE, SUF)  \
+	t (path = path ? path : hookpath(PRE, SUF), !path && errno)
+
 	struct sockaddr_un address;
 	int sock = -1, state = -1, boot = -1, real = -1, foreground = 0;
 	char *path = NULL;
 	struct itimerspec spec;
-	const char *dir;
 
 	/* Parse command line. */
 	if (argc > 0)  argv0 = argv[0];
@@ -210,38 +243,20 @@ main(int argc, char *argv[])
 
 	/* Get hook-script pathname. */
 	if (!getenv("SAT_HOOK_PATH")) {
-		t (path =               hookpath("XDG_CONFIG_HOME", "/sat/hook"), !path && errno);
-		t (path = path ? path : hookpath("HOME", "/.config/sat/hook"),    !path && errno);
-		t (path = path ? path : hookpath(NULL, "/.config/sat/hook"),      !path && errno);
+		HOOKPATH("XDG_CONFIG_HOME", "/sat/hook");
+		HOOKPATH("HOME", "/.config/sat/hook");
+		HOOKPATH(NULL, "/.config/sat/hook");
 		t (setenv("SAT_HOOK_PATH", path ? path : "/etc/sat/hook", 1));
 		free(path), path = NULL;
 	}
 
-	/* Open/create state file. */
-	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/satd.state"))));
-	stpcpy(stpcpy(path, dir), "/satd.state");
-	t (state = open(path, O_RDWR | O_CREAT /* but not O_EXCL */, S_IRWXU), state == -1);
-	free(path), path = NULL;
+	/* Open/create state file, and create socket. */
+	GET_FD(state, STATE_FILENO, create_state());
+	GET_FD(sock,  SOCK_FILENO,  create_socket(&address));
 
-	/* The state file shall be on fd STATE_FILENO. */
-	t (dup2_and_null(state, STATE_FILENO) == -1);
-	state = STATE_FILENO;
-
-	/* Create socket. */
-	t (sock = create_socket(&address), sock == -1);
-	t (dup2_and_null(sock, SOCK_FILENO) == -1);
-	sock = SOCK_FILENO;
-
-	/* Create CLOCK_BOOTTIME timer. */
-	t (boot = timerfd_create(CLOCK_BOOTTIME, 0), boot == -1);
-	t (dup2_and_null(boot, BOOT_FILENO) == -1);
-	boot = BOOT_FILENO;
-
-	/* Create CLOCK_REALTIME timer. */
-	t (real = timerfd_create(CLOCK_REALTIME, 0), real == -1);
-	t (dup2_and_null(real, BOOT_FILENO) == -1);
-	real = BOOT_FILENO;
+	/* Create timers. */
+	GET_FD(boot, BOOT_FILENO, timerfd_create(CLOCK_BOOTTIME, 0));
+	GET_FD(real, REAL_FILENO, timerfd_create(CLOCK_REALTIME, 0));
 
 	/* Configure timers. */
 	memset(&spec, 0, sizeof(spec));
@@ -256,7 +271,7 @@ main(int argc, char *argv[])
 #endif
 
 	/* Daemonise. */
-	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS, 3, 4, 5, 6, -1));
+	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, -1));
 
 	/* Change to a process image without all this initialisation text. */
 	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, address.sun_path, NULL);
