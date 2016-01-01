@@ -125,6 +125,20 @@ fail:  \
 	goto done;  \
 	(void) argc
 
+/**
+ * Call `CALL` which returns a file descriptor.
+ * Than make sure that the file descriptor's
+ * number is `WANT`. Go to `fail' on error.
+ * 
+ * @param  FD:int variable  The variable where the file descriptor shall be stored.
+ * @param  WANT:int         The file descriptor the file should have.
+ * @parma  CALL:int call    Call to function that creates and returns the file descriptor.
+ */
+#define GET_FD(FD, WANT, CALL)              \
+	t (FD = CALL, FD == -1);            \
+	t (dup2_and_null(FD, WANT) == -1);  \
+	FD = WANT
+
 
 
 /**
@@ -237,4 +251,28 @@ int remove_job(const char *jobno, int runjob);
  * @return  A `NULL`-terminated list of all queued jobs. `NULL` on error.
  */
 struct job **get_jobs(void);
+
+/**
+ * Duplicate a file descriptor, and
+ * open /dev/null to the old file descriptor.
+ * However, if `old` is 3 or greater, it will
+ * be closed rather than /dev/null.
+ * 
+ * @param   old  The old file descriptor.
+ * @param   new  The new file descriptor.
+ * @return       `new`, -1 on error.
+ */
+int dup2_and_null(int old, int new);
+
+/**
+ * Create or open the state file.
+ * 
+ * @param   open_flags  Flags (the second parameter) for `open`.
+ * @param   state_path  Output parameter for the state file's pathname.
+ *                      May be `NULL`;
+ * @return              A file descriptor to the state file, -1 on error.
+ * 
+ * @throws  0  `!(open_flags & O_CREAT)` and the file does not exist.
+ */
+int open_state(int open_flags, char **state_path);
 

@@ -415,3 +415,61 @@ fail:
 	return NULL;
 }
 
+
+/**
+ * Duplicate a file descriptor, and
+ * open /dev/null to the old file descriptor.
+ * However, if `old` is 3 or greater, it will
+ * be closed rather than /dev/null.
+ * 
+ * @param   old  The old file descriptor.
+ * @param   new  The new file descriptor.
+ * @return       `new`, -1 on error.
+ */
+int
+dup2_and_null(int old, int new)
+{
+	int fd = -1, saved_errno;
+
+	if (old == new)  return new;  t (DUP2_AND_CLOSE(old, new));
+	if (old >= 3)    return new;  t (fd = open("/dev/null", O_RDWR), fd == -1);
+	if (fd == old)   return new;  t (DUP2_AND_CLOSE(fd, old));
+	return new;
+fail:
+	saved_errno = errno, close(fd), errno = saved_errno;
+	return -1;
+}
+
+
+/**
+ * Create or open the state file.
+ * 
+ * @param   open_flags  Flags (the second parameter) for `open`.
+ * @param   state_path  Output parameter for the state file's pathname.
+ *                      May be `NULL`;
+ * @return              A file descriptor to the state file, -1 on error.
+ * 
+ * @throws  0  `!(open_flags & O_CREAT)` and the file does not exist.
+ */
+int
+open_state(int open_flags, char **state_path)
+{
+	const char *dir;
+	char *path;
+	int fd = -1, saved_errno;
+
+	/* Create directory. */
+	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
+	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/" PACKAGE "/state"))));
+	stpcpy(stpcpy(path, dir), "/" PACKAGE "/state");
+	t (fd = open(path, open_flags, S_IRUSR | S_IWUSR), fd == -1);
+
+	if (state_path)  *state_path = path, path = NULL;
+	else             free(path), path = NULL;
+fail:
+	saved_errno = errno, free(path), errno = saved_errno;
+	if (!(open_flags & O_CREAT) && ((errno == ENOENT) || (errno == ENOTDIR)))
+		errno = 0;
+	return fd;
+}
+

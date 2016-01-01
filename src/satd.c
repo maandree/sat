@@ -87,32 +87,6 @@ fail:
 
 
 /**
- * Create the state file.
- * 
- * @param   state_path  Output parameter for the state file's pathname.
- * @return              A file descriptor to the state file, -1 on error.
- */
-static int
-create_state(char **state_path)
-{
-	const char *dir;
-	char *path;
-	int fd = -1, saved_errno;
-
-	/* Create directory. */
-	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/" PACKAGE "/state"))));
-	stpcpy(stpcpy(path, dir), "/" PACKAGE "/state");
-	t (fd = open(path, O_RDWR | O_CREAT /* but not O_EXCL or O_TRUNC */, S_IRUSR | S_IWUSR), fd == -1);
-	*state_path = path, path = NULL;
-
-fail:
-	saved_errno = errno, free(path), errno = saved_errno;
-	return fd;
-}
-
-
-/**
  * Create and lock the lock file, and its directory.
  * 
  * @return  A file descriptor to the lock file, -1 on error.
@@ -187,31 +161,6 @@ fail:
 
 
 /**
- * Duplicate a file descriptor, and
- * open /dev/null to the old file descriptor.
- * However, if `old` is 3 or greater, it will
- * be closed rather than /dev/null.
- * 
- * @param   old  The old file descriptor.
- * @param   new  The new file descriptor.
- * @return       `new`, -1 on error.
- */
-static int
-dup2_and_null(int old, int new)
-{
-	int fd = -1, saved_errno;
-
-	if (old == new)  return new;  t (DUP2_AND_CLOSE(old, new));
-	if (old >= 3)    return new;  t (fd = open("/dev/null", O_RDWR), fd == -1);
-	if (fd == old)   return new;  t (DUP2_AND_CLOSE(fd, old));
-	return new;
-fail:
-	saved_errno = errno, close(fd), errno = saved_errno;
-	return -1;
-}
-
-
-/**
  * The sat daemon initialisation.
  * 
  * @param   argc  Any value in [0, 2] is accepted.
@@ -224,10 +173,6 @@ fail:
 int
 main(int argc, char *argv[])
 {
-#define GET_FD(FD, WANT, CALL)              \
-	t (FD = CALL, FD == -1);            \
-	t (dup2_and_null(FD, WANT) == -1);  \
-	FD = WANT
 #define HOOKPATH(PRE, SUF)  \
 	t (path = path ? path : hookpath(PRE, SUF), !path && errno)
 
@@ -253,7 +198,7 @@ main(int argc, char *argv[])
 
 	/* Open/create lock file and state file, and create socket. */
 	GET_FD(lock,  LOCK_FILENO,  create_lock());
-	GET_FD(state, STATE_FILENO, create_state(&path));
+	GET_FD(state, STATE_FILENO, open_state(O_RDWR | O_CREAT, &path));
 	GET_FD(sock,  SOCK_FILENO,  create_socket(&address));
 
 	/* Create timers. */

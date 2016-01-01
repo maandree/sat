@@ -18,10 +18,10 @@ parse_time.[ch]    Use by sat.c to parse the time argument.
 daemonise.[ch]     From <http://github.com/maandree/slibc>;
                    daemonisation of the process. Used by satd.c
 
-client.[ch]        Used by sat{,q,r,rm}.c, code for communicating
+client.[ch]        Used by sat{,r,rm}.c, code for communicating
                    with satd, starts satd transparently if necessary.
 
-daemon.[ch]        Used by satd*.c, some shared code for daemons objects.
+daemon.[ch]        Used by sat{q,d*}.c, some shared code for daemons objects.
 
 common.h           Used by sat{,q,r,rm,d*}.c, some shared code.
                    Included via client.h and daemon.h.
