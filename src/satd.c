@@ -114,7 +114,7 @@ main(int argc, char *argv[])
 	t (timerfd_settime(real, TFD_TIMER_ABSTIME, &spec, NULL));
 
 	/* Daemonise. */
-	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, -1));
+	t (foreground ? 0 : daemonise("satd", /*DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID,*/ 3, 4, 5, 6, -1));
 
 	/* Change to a process image without all this initialisation text. */
 	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, path, NULL);

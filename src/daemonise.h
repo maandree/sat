@@ -23,83 +23,6 @@
 
 
 /**
- * Leave all opened files open.
- */
-#define DAEMONISE_NO_CLOSE  1
-
-/**
- * Leave all signal handlers rather than
- * appling default signal handlers.
- */
-#define DAEMONISE_NO_SIG_DFL  2
-
-/**
- * Leave the signal block mask as-is.
- */
-#define DAEMONISE_KEEP_SIGMASK  4
-
-/**
- * Do not remove malformatted environment entries.
- */
-#define DAEMONISE_KEEP_ENVIRON  8
-
-/**
- * Do not set umask to zero.
- */
-#define DAEMONISE_KEEP_UMASK  16
-
-/**
- * Do not create a PID file.
- * 
- * Cannot be combined with `DAEMONISE_NEW_PID`.
- */
-#define DAEMONISE_NO_PID_FILE  32
-
-/**
- * Do not close stderr even if it is
- * a terminal device.
- * 
- * Cannot be combined with `DAEMONISE_CLOSE_STDERR`.
- */
-#define DAEMONISE_KEEP_STDERR  64
-
-/**
- * Close stderr even if it is
- * not a terminal device.
- * 
- * Cannot be combined with `DAEMONISE_KEEP_STDERR`.
- */
-#define DAEMONISE_CLOSE_STDERR  128
-
-/**
- * Do not close stdin.
- */
-#define DAEMONISE_KEEP_STDIN  256
-
-/**
- * Do not close stdout.
- */
-#define DAEMONISE_KEEP_STDOUT  512
-
-/**
- * Enables you to select additional
- * file descritors to keep open.
- */
-#define DAEMONISE_KEEP_FDS  1024
-
-/**
- * Override the PID file if it already exists,
- * rather than failing. It is a bad idea to do
- * this unless you already made sure that the
- * daemon is not already running.
- * 
- * Cannot be combined with `DAEMONISE_NO_PID_FILE`.
- */
-#define DAEMONISE_NEW_PID  2048
-
-
-
-/**
  * Daemonise the process. This means to:
  * 
  * -  close all file descritors except for those to
@@ -166,27 +89,9 @@
  * 
  * @param   name   The name of the daemon. Use a hardcoded value,
  *                 not the process name. Must not be `NULL`.
- * @param   flags  Flags to modify the behaviour of the function.
- *                 A bitwise OR combination of the constants:
- *                 -  `DAEMONISE_NO_CLOSE`
- *                 -  `DAEMONISE_NO_SIG_DFL`
- *                 -  `DAEMONISE_KEEP_SIGMASK`
- *                 -  `DAEMONISE_KEEP_ENVIRON`
- *                 -  `DAEMONISE_KEEP_UMASK`
- *                 -  `DAEMONISE_NO_PID_FILE`
- *                 -  `DAEMONISE_KEEP_STDERR`
- *                 -  `DAEMONISE_CLOSE_STDERR`
- *                 -  `DAEMONISE_KEEP_STDIN`
- *                 -  `DAEMONISE_KEEP_STDOUT`
- *                 -  `DAEMONISE_KEEP_FDS`
- *                 -  `DAEMONISE_NEW_PID`
- * @param   ...    Enabled if `DAEMONISE_KEEP_FDS` is used,
- *                 do not add anything if `DAEMONISE_KEEP_FDS`
- *                 is unused. This is a `-1`-terminated list
- *                 of file descritors to keep open. 0, 1, and 2
- *                 are implied by `DAEMONISE_KEEP_STDIN`,
- *                 `DAEMONISE_KEEP_STDOUT`, and `DAEMONISE_KEEP_STDERR`,
- *                 respectively. All arguments are of type `int`.
+ * @param   ...    This is a `-1`-terminated list
+ *                 of file descritors to keep open.
+ *                 All arguments are of type `int`.
  * @return         Zero on success, -1 on error.
  * 
  * @throws  EEXIST  The PID file already exists on the system.
@@ -213,7 +118,7 @@
  * 
  * @since  Always.
  */
-int daemonise(const char* name, int flags, ...);
+int daemonise(const char* name, ...);
 
 
 /**
