@@ -20,7 +20,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include "client.h"
-#include "common.h"
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>

@@ -22,6 +22,7 @@
 #ifndef _DEFAULT_SOURCE
 # define _DEFAULT_SOURCE
 #endif
+#include "common.h"
 #include <stddef.h>
 #include <errno.h>
 #include <string.h>
@@ -83,23 +84,6 @@
 
 
 
-#ifndef t
-/**
- * Go to `fail` if a statement evaluates to non-zero.
- * 
- * @param  ...  The statement.
- */
-# ifndef DEBUG
-#  define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
-# else
-#  define t(...)  do { if ((__VA_ARGS__) ? (failed__ = #__VA_ARGS__) : 0) { (perror)(failed__); goto fail; } } while (0)
-static const char *failed__ = NULL;
-#  define perror(_)  ((void)(_))
-# endif
-#endif
-
-
-
 /**
  * `dup2(OLD, NEW)` and, on success, `close(OLD)`.
  * 
@@ -144,43 +128,6 @@ fail:  \
 
 
 /**
- * A queued job.
- */
-struct job {
-	/**
-	 * The job number.
-	 */
-	size_t no;
-
-	/**
-	 * The number of “argv” elements in `payload`.
-	 */
-	int argc;
-
-	/**
-	 * The clock in which `ts` is measured.
-	 */
-	clockid_t clk;
-
-	/**
-	 * The time when the job shall be executed.
-	 */
-	struct timespec ts;
-
-	/**
-	 * The number of bytes in `payload`.
-	 */
-	size_t n;
-
-	/**
-	 * “argv” followed by “envp”.
-	 */
-	char payload[];
-};
-
-
-
-/**
  * Wrapper for `pread` that reads the required amount of data.
  * 
  * @param   fildes  See pread(3).
@@ -204,6 +151,8 @@ ssize_t pwriten(int fildes, const void *buf, size_t nbyte, size_t offset);
 
 /**
  * Wrapper for `read` that reads all available data.
+ * 
+ * `errno` is set to `EBADMSG` on success.
  * 
  * @param   fd   The file descriptor from which to to read.
  * @param   buf  Output parameter for the data.
@@ -288,51 +237,4 @@ int remove_job(const char *jobno, int runjob);
  * @return  A `NULL`-terminated list of all queued jobs. `NULL` on error.
  */
 struct job **get_jobs(void);
-
-
-
-/**
- * This block of code allows us to compile with DEBUG=valgrind
- * or DEBUG=strace and have all exec:s be wrapped in
- * valgrind --leak-check=full --show-leak-kinds=all or
- * strace, respectively. Very useful for debugging. However,
- * children do not inherit strace, so between forking and
- * exec:ing we do not have strace.
- */
-#if 1 && defined(DEBUG)
-# if ((DEBUG == 2) || (DEBUG == 3))
-#  ifdef __GNUC__
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-__attribute__((__used__))
-#  endif
-#  if DEBUG == 2
-#   define DEBUGPROG  "strace"
-#  else
-#   define DEBUGPROG  "valgrind"
-#  endif
-#  define execl(path, _, ...) (execl)("/usr/bin/" DEBUGPROG, "/usr/bin/" DEBUGPROG, path, __VA_ARGS__)
-#  define execve(...) execve_(__VA_ARGS__)
-static int
-execve_(const char *path, char *const argv[], char *const envp[])
-{
-	size_t n = 0;
-	char **new_argv = NULL;
-	int x = (DEBUG - 2) * 2, saved_errno;
-	while (argv[n++]);
-	t (!(new_argv = malloc((n + 1 + (size_t)x) * sizeof(char *))));
-	new_argv[x] = "--show-leak-kinds=all";
-	new_argv[1] = "--leak-check=full";
-	new_argv[0] = "/usr/bin/" DEBUGPROG;
-	new_argv[1 + x] = path;
-	memcpy(new_argv + 2 + x, argv + 1, (n - 1) * sizeof(char *));
-	(execve)(*new_argv, new_argv, envp);
-fail:
-	return saved_errno = errno, free(new_argv), errno = saved_errno, -1;
-}
-#  ifdef __GNUC__
-#   pragma GCC diagnostic pop
-#  endif
-# endif
-#endif
 

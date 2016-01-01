@@ -37,49 +37,40 @@
 int
 main(int argc, char *argv[])
 {
+#define M  ((struct job *)message)
+
 	size_t n = 0, elements = 0, i;
 	ssize_t r;
 	char *message = NULL;
-	int msg_argc;
-	struct job *job = NULL;
 	struct stat attr;
 	DAEMON_PROLOGUE;
 
 	/* Receive and validate message. */
-	t (readall(SOCK_FILENO, &message, &n));
-	t (n < sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec));
-	n  -=  sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec);
-	msg_argc = *(int *)(message + n);
-	t ((msg_argc < 1) || !n || message[n - 1]);
-	for (i = n; i--; elements += !message[i]);
-	t (elements < (size_t)msg_argc);
-
-	/* Parse message. */
-	t (!(job = malloc(sizeof(*job) + n)));
-	job->argc = msg_argc;/* *(int *)(message + n);    "See a few lines above.";  */
-	job->clk  =       *(clockid_t *)(message + n + sizeof(int));
-	job->ts   = *(struct timespec *)(message + n + sizeof(int) + sizeof(clockid_t));
-	memcpy(job->payload, message, job->n = n);
+	t (readall(SOCK_FILENO, &message, &n) || (n < sizeof(struct job)));
+	t (M->n != (n -= sizeof(struct job)));
+	t ((M->argc < 1) || !n || message[sizeof(struct job) - 1 + n]);
+	for (i = n; i--; elements += !message[sizeof(struct job) + i]);
+	t (elements < (size_t)(M->argc));
 
 	/* Update state file and run hook. */
 	t (flock(STATE_FILENO, LOCK_EX));
 	t (fstat(STATE_FILENO, &attr));
-	t (r = preadn(STATE_FILENO, &(job->no), sizeof(job->no), (size_t)0), r < 0);
-	if (r < (ssize_t)sizeof(job->no))
-		job->no = 0;
+	t (r = preadn(STATE_FILENO, &(M->no), sizeof(M->no), (size_t)0), r < 0);
+	if (r < (ssize_t)sizeof(M->no))
+		M->no = 0;
 	else
-		job->no += 1;
-	t (pwriten(STATE_FILENO, &(job->no), sizeof(job->no), (size_t)0) < (ssize_t)sizeof(job->no));
-	if (attr.st_size < (off_t)sizeof(job->no))
-		attr.st_size = (off_t)sizeof(job->no);
-	t (pwriten(STATE_FILENO, job, sizeof(*job) + n, (size_t)(attr.st_size)) < (ssize_t)n);
+		M->no += 1;
+	t (pwriten(STATE_FILENO, &(M->no), sizeof(M->no), (size_t)0) < (ssize_t)sizeof(M->no));
+	if (attr.st_size < (off_t)sizeof(M->no))
+		attr.st_size = (off_t)sizeof(M->no);
+	n += sizeof(struct job);
+	t (pwriten(STATE_FILENO, message, n, (size_t)(attr.st_size)) < (ssize_t)n);
 	fsync(STATE_FILENO);
-	run_job_or_hook(job, "queued");
+	run_job_or_hook(M, "queued");
 	t (flock(STATE_FILENO, LOCK_UN));
 
 	DAEMON_CLEANUP_START;
 	free(message);
-	free(job);
 	DAEMON_CLEANUP_END;
 }
 

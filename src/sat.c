@@ -21,7 +21,6 @@
  */
 #include "parse_time.h"
 #include "client.h"
-#include "common.h"
 #include <errno.h>
 #include <unistd.h>
 
@@ -53,19 +52,20 @@ main(int argc, char *argv[], char *envp[])
 {
 #define E(CASE, DESC)  case CASE: return fprintf(stderr, "%s: %s: %s\n", argv0, DESC, argv[1]), 2
 
-	struct timespec ts;
-	clockid_t clk;
 	char *msg = NULL;
+	char *timearg;
 	void *new;
-	size_t n, size = 64;
+	size_t size = 64;
+	struct job job = { .no = 0 };
 
 	if ((argc < 3) || (argv[1][0] == '-'))
 		usage();
 
-	argv0 = argv[0];
+	argv0 = argv[0], timearg = argv[1];
+	job.argc = argc -= 2, argv += 2;
 
 	/* Parse the time argument. */
-	if (parse_time(argv[1], &ts, &clk)) {
+	if (parse_time(timearg, &(job.ts), &(job.clk))) {
 		switch (errno) {
 		E (EINVAL, "time parameter cound not be parsed, perhaps you need an external parser");
 		E (ERANGE, "the specified time is beyond the limit of what can be stored");
@@ -73,9 +73,6 @@ main(int argc, char *argv[], char *envp[])
 		default: goto fail;
 		}
 	}
-
-	argc -= 2;
-	argv += 2;
 
 retry:
 	/* Get the size of the current working directory's pathname. */
@@ -87,15 +84,13 @@ retry:
 	size = strlen(getcwd(msg, size)) + 1, free(msg);
 
 	/* Construct message to send to the daemon. */
-	n = measure_array(argv) + size + measure_array(envp);
-	t (!(msg = malloc(n + sizeof(argc) + sizeof(clk) + sizeof(ts))));
-	store_array(getcwd(store_array(msg, argv), size) + size, envp);
-	memcpy(msg + n, &argc, sizeof(argc)), n += sizeof(argc);
-	memcpy(msg + n, &clk,  sizeof(clk)),  n += sizeof(clk);
-	memcpy(msg + n, &ts,   sizeof(ts)),   n += sizeof(ts);
+	job.n = measure_array(argv) + size + measure_array(envp);
+	t (!(msg = malloc(sizeof(job) + job.n)));
+	memcpy(msg, &job, sizeof(job));
+	store_array(getcwd(store_array(msg + sizeof(job), argv), size) + size, envp);
 
 	/* Send job to daemon, start daemon if necessary. */
-	SEND(SAT_QUEUE, n, msg);
+	SEND(SAT_QUEUE, sizeof(job) + job.n, msg);
 
 	END(msg);
 }

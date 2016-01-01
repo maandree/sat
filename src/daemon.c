@@ -103,6 +103,8 @@ pwriten(int fildes, const void *buf, size_t nbyte, size_t offset)
 /**
  * Wrapper for `read` that reads all available data.
  * 
+ * `errno` is set to `EBADMSG` on success.
+ * 
  * @param   fd   The file descriptor from which to to read.
  * @param   buf  Output parameter for the data.
  * @param   n    Output parameter for the number of read bytes.
@@ -131,7 +133,7 @@ readall(int fd, char **buf, size_t *n)
 	new = realloc(buffer, *n = ptr);
 	*buf = ptr ? (new ? new : buffer) : NULL;
 	shutdown(SOCK_FILENO, SHUT_RD);
-	return 0;
+	return errno = EBADMSG, 0;
 
 fail:
 	saved_errno = errno;
