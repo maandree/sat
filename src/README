@@ -23,6 +23,6 @@ client.[ch]        Used by sat{,q,r,rm}.c, code for communicating
 
 daemon.[ch]        Used by satd*.c, some shared code for daemons objects.
 
-common.h           Used by sat{,q,r,rm,d'}.c, some shared code.
+common.h           Used by sat{,q,r,rm,d*}.c, some shared code.
                    Included via client.h and daemon.h.
 
