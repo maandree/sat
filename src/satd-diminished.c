@@ -222,7 +222,6 @@ fail:
 	rc = 1;
 done:
 	while (waitpid(-1, NULL, 0) > 0);
-	unlink(argv[1]);
 	if (!rc)
 		unlink(argv[2]);
 	close(STATE_FILENO);
