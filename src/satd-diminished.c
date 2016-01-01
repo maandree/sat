@@ -74,18 +74,19 @@ static const struct itimerspec nilspec = {
 static void
 sighandler(int signo)
 {
-	int saved_errno = errno;
+	int no_reap = 1, saved_errno = errno;
 	pid_t pid;
 	if (signo == SIGCHLD) {
 		for (; (pid = waitpid(-1, NULL, WNOHANG)) > 0; child_count--) {
+			no_reap = 0;
 			if (pid == timer_pid)
 				timer_pid = NO_TIMER_SPAWNED;
 			else
 				received_signo = (sig_atomic_t)signo;
 		}
-	} else {
-		received_signo = (sig_atomic_t)signo;
 	}
+	if (no_reap) /* Phony SIGCHLD or not SIGCHLD at all. */
+		received_signo = (sig_atomic_t)signo;
 	errno = saved_errno;
 }
 
@@ -187,8 +188,8 @@ again:
 		perror(argv[0]);
 	}
 	/* Need to set new timer values? */
-	if (expired || ((received_signo == SIGCHLD) && !child_count))
-		t (expired = 0, spawn(argv, envp));
+	if ((received_signo == SIGCHLD) && !child_count)
+		t (spawn(argv, envp));
 	received_signo = 0;
 #if 1 || !defined(DEBUG)
 	/* Can we quit yet? */
