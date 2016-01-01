@@ -63,7 +63,7 @@ create_lock(void)
 
 	/* Store PID in the file. */
 	/* Yes it is coming similar to a PID file, but this works if the started with -f. */
-	t (pwrite(fd, &pid, sizeof(pid), (off_t)0) < (size_t)sizeof(pid));
+	t (pwrite(fd, &pid, sizeof(pid), (off_t)0) < (ssize_t)sizeof(pid));
 
 	goto done;
 fail:
