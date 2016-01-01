@@ -143,7 +143,7 @@ print(const char *s, ...)
 
 
 /**
- * Dump a job to the socket.
+ * Dump a job to stdout.
  * 
  * @param   job  The job.
  * @return       0 on success, -1 on error.

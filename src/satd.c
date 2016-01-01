@@ -100,7 +100,7 @@ main(int argc, char *argv[])
 	/* Get hook-script pathname. */
 	t (set_hookpath());
 
-	/* Open/create lock file and state file, and create socket. */
+	/* Open/create lock file and state file. */
 	GET_FD(lock,  LOCK_FILENO,  create_lock());
 	GET_FD(state, STATE_FILENO, open_state(O_RDWR | O_CREAT, &path));
 
