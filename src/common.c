@@ -417,6 +417,7 @@ poke_daemon(int start, const char *name)
 		t (read(fd, &pid, sizeof(pid)) < (ssize_t)sizeof(pid));
 		close(fd), fd = -1;
 	}
+	free(path), path = NULL;
 
 	/* Start daemon if not running, otherwise poke it. */
 	if (start) {

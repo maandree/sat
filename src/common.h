@@ -181,7 +181,7 @@ const char *argv0 = name;
 #define NO_OPTIONS  \
 do {  \
 	int i;  \
-	if (!strcmp(argv[1], "--"))  \
+	if ((argc > 1) && !strcmp(argv[1], "--"))  \
 		argv++, argc--;  \
 	for (i = 1; i < argc; i++)  \
 		if (strchr("-", argv[i][0]))  \
