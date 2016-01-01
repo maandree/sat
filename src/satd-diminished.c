@@ -187,7 +187,7 @@ again:
 		perror(argv[0]);
 	}
 	/* Need to set new timer values? */
-	if (expired || ((received_signo == SIGCHLD) && (timer_pid == NO_TIMER_SPAWNED)))
+	if (expired || ((received_signo == SIGCHLD) && !children))
 		t (expired = 0, spawn(argv, envp));
 	received_signo = 0;
 #if 1 || !defined(DEBUG)
@@ -214,7 +214,6 @@ not_done:
 	/* Was any jobs expired? */
 	t ((expired |= test_timer(BOOT_FILENO, &fdset)) < 0);
 	t ((expired |= test_timer(REAL_FILENO, &fdset)) < 0);
-	/* Accept connections. */
 	goto again;
 
 fail:
