@@ -187,7 +187,7 @@ again:
 		perror(argv[0]);
 	}
 	/* Need to set new timer values? */
-	if (expired || ((received_signo == SIGCHLD) && !children))
+	if (expired || ((received_signo == SIGCHLD) && !child_count))
 		t (expired = 0, spawn(argv, envp));
 	received_signo = 0;
 #if 1 || !defined(DEBUG)
