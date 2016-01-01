@@ -60,6 +60,11 @@ static volatile sig_atomic_t received_signo = SIGCHLD; /* Forces the "timer" ima
  */
 static volatile pid_t timer_pid = NO_TIMER_SPAWNED;
 
+/**
+ * Child counter.
+ */
+static volatile pid_t child_count = 0;
+
 
 
 /**
@@ -73,7 +78,7 @@ sighandler(int signo)
 	int saved_errno = errno;
 	pid_t pid;
 	if (signo == SIGCHLD) {
-		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+		for (; (pid = waitpid(-1, NULL, WNOHANG)) > 0; child_count--) {
 			if (pid == timer_pid)
 				timer_pid = NO_TIMER_SPAWNED;
 			else
@@ -132,6 +137,7 @@ fork_again:
 		close(fd);
 		exit(1);
 	default:
+		child_count++;
 		if (command < 0)
 			timer_pid = pid;
 		return 0;
@@ -161,7 +167,7 @@ is_timer_set(int fd)
  * 
  * @param  fd     The file descriptor of the timer.
  * @param  fdset  Set that shall contain `fd` iff it has expired.
- * @return        0 on sucess, -1 on error.
+ * @return        1 if the timer expired, 0 otherwise, -1 on error.
  */
 static int
 test_timer(int fd, const fd_set *fdset)
@@ -171,10 +177,10 @@ test_timer(int fd, const fd_set *fdset)
 		.it_interval.tv_sec  = 0, .it_value.tv_sec  = 0,
 		.it_interval.tv_nsec = 0, .it_value.tv_nsec = 0,
 	};
-	if (!FD_ISSET(BOOT_FILENO, fdset))                return 0;
-	if (read(BOOT_FILENO, &_overrun, (size_t)8) < 8)  return -1;
-	if (timer_pid == NO_TIMER_SPAWNED)                return 0;
-	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &spec, NULL);
+	if (!FD_ISSET(fd, fdset))                return 0;
+	if (read(fd, &_overrun, (size_t)8) < 8)  return -1;
+	if (timer_pid == NO_TIMER_SPAWNED)       return 1;
+	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &spec, NULL) ? -1 : 1;
 }
 
 
@@ -191,7 +197,7 @@ test_timer(int fd, const fd_set *fdset)
 int
 main(int argc, char *argv[], char *envp[])
 {
-	int fd = -1, rc = 0, accepted = 0, r;
+	int fd = -1, rc = 0, accepted = 0, r, expired = 0;
 	unsigned char type;
 	fd_set fdset;
 	struct stat attr;
@@ -202,34 +208,37 @@ main(int argc, char *argv[], char *envp[])
 
 	/* The magnificent loop. */
 again:
-#if 0 || !defined(DEBUG)
-	if (accepted && (timer_pid == NO_TIMER_SPAWNED)) {
-		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
-		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
-		t (fstat(STATE_FILENO, &attr));
-		if (attr.st_size > (off_t)sizeof(size_t)) {
-			t (spawn(-1, -1, argv, envp));
-			goto not_done;
-		}
-		goto done;
-	 }
-not_done:
-#endif
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_IMAGE("diminished"), argv, envp);
 		perror(argv[0]);
-	} else if ((received_signo == SIGCHLD) && (timer_pid == NO_TIMER_SPAWNED)) {
+	}
+	if (expired || ((received_signo == SIGCHLD) && (timer_pid == NO_TIMER_SPAWNED))) {
+		expired = 0;
 		t (spawn(-1, -1, argv, envp));
 	}
 	received_signo = 0;
+#if 1 || !defined(DEBUG)
+	if (accepted && !child_count) {
+		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
+		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
+		t (fstat(STATE_FILENO, &attr));
+		if (attr.st_size > (off_t)sizeof(size_t))
+			t (spawn(-1, -1, argv, envp));
+		else
+			goto done;
+	 }
+#endif
+not_done:
 	FD_ZERO(&fdset);
 	FD_SET(SOCK_FILENO, &fdset);
-	// FIXME ---- FD_SET(BOOT_FILENO, &fdset);
-	// FIXME ---- FD_SET(REAL_FILENO, &fdset); /* This is the highest one. */
-	if (select(REAL_FILENO + 1, &fdset, NULL, NULL, NULL) == -1)
+	FD_SET(BOOT_FILENO, &fdset);
+	FD_SET(REAL_FILENO, &fdset); /* This is the highest one. */
+	if (select(REAL_FILENO + 1, &fdset, NULL, NULL, NULL) == -1) {
 		t (errno != EINTR);
-	t (test_timer(BOOT_FILENO, &fdset));
-	t (test_timer(REAL_FILENO, &fdset));
+		goto again;
+	}
+	t ((expired |= test_timer(BOOT_FILENO, &fdset)) < 0);
+	t ((expired |= test_timer(REAL_FILENO, &fdset)) < 0);
 	if (!FD_ISSET(SOCK_FILENO, &fdset))
 		goto again;
 	if (fd = accept(SOCK_FILENO, NULL, NULL), fd == -1) {
