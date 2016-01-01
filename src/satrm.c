@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include "client.h"
+#include "daemon.h"
 
 
 
@@ -42,15 +42,14 @@ USAGE("JOB-ID...")
 int
 main(int argc, char *argv[])
 {
-	size_t n;
-	char *msg = NULL;
-
-	if (argc > 0)  argv0 = argv[0];
-	if (argc < 2)  usage();
-
+	PROLOGUE(argc >= 2, O_RDWR, NULL);
 	NO_OPTIONS;
-	CONSTRUCT_MESSAGE;
-	SEND(SAT_REMOVE, n, msg);
-	END(msg);
+
+	for (argv++; *argv; argv++)
+		t (remove_job(*argv, 0) && errno);
+	t (poke_daemon());
+
+	CLEANUP_START;
+	CLEANUP_END;
 }
 

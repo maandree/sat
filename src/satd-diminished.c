@@ -134,8 +134,6 @@ spawn(int command, int fd, char *argv[], char *envp[])
 	/* Child. */
 	switch (command) {
 	IMAGE(SAT_QUEUE,  "add");
-	IMAGE(SAT_REMOVE, "rm");
-	IMAGE(SAT_RUN,    "run");
 	IMAGE(-1,         "timer");
 	default:
 		fprintf(stderr, "%s: invalid command received.\n", argv[0]);

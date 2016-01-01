@@ -247,25 +247,16 @@ main(int argc, char *argv[])
 {
 	struct job **jobs = NULL;
 	struct job **job;
-	int state = -1;
+	PROLOGUE(argc < 2, O_RDONLY, NULL);
 
-	if (argc > 0)  argv0 = argv[0];
-	if (argc > 1)  usage();
-
-	GET_FD(state, STATE_FILENO, open_state(O_RDONLY, NULL));
 	t (!(jobs = get_jobs()));
 	for (job = jobs; *job; job++)
 		t (print_job(*job));
 
-	errno = 0;
-fail:
-	if (errno)
-		perror(argv[0]);
+	CLEANUP_START;
 	for (job = jobs; jobs && *job; job++)
 		free(*job);
 	free(jobs);
-	if (state >= 0)
-		close(state);
-	return !!errno;
+	CLEANUP_END;
 }
 

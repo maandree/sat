@@ -473,3 +473,16 @@ fail:
 	return fd;
 }
 
+
+/**
+ * Let the daemon know that it may need to
+ * update the timers, and perhaps exit.
+ * 
+ * @return  0 on success, -1 on error.
+ */
+int
+poke_daemon(void)
+{
+	return 0; /* TODO poke_daemon */
+}
+

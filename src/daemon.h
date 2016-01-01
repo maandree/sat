@@ -67,21 +67,6 @@
  */
 #define SAT_QUEUE  0
 
-/**
- * Command: remove jobs.
- */
-#define SAT_REMOVE  1
-
-/**
- * Command: print job queue.
- */
-#define SAT_PRINT  2
-
-/**
- * Command: run jobs.
- */
-#define SAT_RUN  3
-
 
 
 /**
@@ -138,6 +123,22 @@ fail:  \
 	t (FD = CALL, FD == -1);            \
 	t (dup2_and_null(FD, WANT) == -1);  \
 	FD = WANT
+
+
+#define PROLOGUE(USAGE_ASSUMPTION, ...)     \
+	int state = -1;                     \
+	if (argc > 0)  argv0 = argv[0];     \
+	if (!(USAGE_ASSUMPTION))  usage();  \
+	GET_FD(state, STATE_FILENO, open_state(__VA_ARGS__))
+
+#define CLEANUP_START                       \
+	errno = 0;                          \
+fail:                                       \
+	if (errno)       perror(argv[0]);   \
+	if (state >= 0)  close(state)
+
+#define CLEANUP_END  \
+	return !!errno
 
 
 
@@ -275,4 +276,12 @@ int dup2_and_null(int old, int new);
  * @throws  0  `!(open_flags & O_CREAT)` and the file does not exist.
  */
 int open_state(int open_flags, char **state_path);
+
+/**
+ * Let the daemon know that it may need to
+ * update the timers, and perhaps exit.
+ * 
+ * @return  0 on success, -1 on error.
+ */
+int poke_daemon(void);
 
