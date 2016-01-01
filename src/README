@@ -1,11 +1,10 @@
-sat.c    The satd program, ask satd to queue a job.
+sat.c    The satd program, queues a job and the pokes or starts the daemon.
 satq.c   The satq program, prints the job queue.
 satr.c   The satr program, runs jobs and then pokes the daemon.
 satrm.c  The satrm program, removes jobs and then pokes the daemon.
 
 satd.c             The initialisation part of satd.
 satd-diminished.c  The rest of satd, satd.c exec:s to this.
-satd-add.c         The part of satd responding to sat, satd-diminished.c fork–exec:s to this.
 satd-timer.c       The part of satd responsible for running expired jobs and setting timers
 		   to wait for new expirations, satd-diminished.c fork–exec:s to this.
 
@@ -15,11 +14,5 @@ parse_time.[ch]    Use by sat.c to parse the time argument.
 daemonise.[ch]     From <http://github.com/maandree/slibc>;
                    daemonisation of the process. Used by satd.c
 
-client.[ch]        Used by sat.c, code for communicating
-                   with satd, starts satd transparently if necessary.
-
-daemon.[ch]        Used by sat{q,r,rm,d*}.c, some shared code for daemons objects.
-
-common.h           Used by sat{,q,r,rm,d*}.c, some shared code.
-                   Included via client.h and daemon.h.
+common.[ch]        Used by sat{q,r,rm,d*}.c, some shared code.
 

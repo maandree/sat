@@ -19,71 +19,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include "daemon.h"
+#include "common.h"
 #include "daemonise.h"
-#include <unistd.h>
-#include <errno.h>
-#include <pwd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/un.h>
-#include <sys/file.h>
-#include <sys/timerfd.h>
-
-
-
-/**
- * The size of the backlog on the socket.
- */
-#ifndef SATD_BACKLOG
-# define SATD_BACKLOG  5
-#endif
-#if SATD_BACKLOG > SOMAXCONN
-# undef SATD_BACKLOG
-# defined SATD_BACKLOG SOMAXCONN
-#endif
-
-#define  close(fd)  (fd < 0 ? 0 : close(fd))
 
 
 
 COMMAND("satd")
 USAGE("[-f]")
 
-
-
-/**
- * Create the socket.
- * 
- * @param   address  Output parameter for the socket address.
- * @return           The file descriptor for the socket, -1 on error.
- */
-static int
-create_socket(struct sockaddr_un *address)
-{
-	const void *_cvoid;
-	const char *dir;
-	int fd = -1, saved_errno;
-
-	/* Get socket address. */
-	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
-	if (strlen(dir) + sizeof("/" PACKAGE "/socket") > sizeof(address->sun_path))
-		t ((errno = ENAMETOOLONG));
-	stpcpy(stpcpy(address->sun_path, dir), "/" PACKAGE "/socket");
-	address->sun_family = AF_UNIX;
-
-	/* Create socket. */
-	unlink(address->sun_path);
-	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
-	t (fchmod(fd, S_IRWXU));
-	t (bind(fd, (const struct sockaddr *)(_cvoid = address), (socklen_t)sizeof(*address)));
-	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
-
-	return fd;
-fail:
-	saved_errno = errno, close(fd), errno = saved_errno;
-	return -1;
-}
 
 
 /**
@@ -97,6 +40,7 @@ create_lock(void)
 	const char *dir;
 	char *path;
 	char *p;
+	pid_t pid = getpid();
 	int fd = -1, saved_errno = 0;
 
 	/* Create directory. */
@@ -117,46 +61,16 @@ create_lock(void)
 		goto fail;
 	}
 
+	/* Store PID in the file. */
+	/* Yes it is coming similar to a PID file, but this works if the started with -f. */
+	t (pwrite(fd, &pid, sizeof(pid), (off_t)0) < (size_t)sizeof(pid));
+
 	goto done;
 fail:
-	saved_errno = errno, close(fd);
+	saved_errno = errno, close(fd), fd = -1;
 done:
 	free(path), errno = saved_errno;
 	return fd;
-}
-
-
-/**
- * Construct the pathname for the hook script.
- * 
- * @param   env     The environment variable to use for the beginning
- *                  of the pathname, `NULL` for the home directory.
- * @param   suffix  The rest of the pathname.
- * @return          The pathname.
- * 
- * @throws  0  The environment variable is not set, or, if `env` is
- *             `NULL` the user is root or homeless.
- */
-static char *
-hookpath(const char *env, const char *suffix)
-{
-	struct passwd *pwd;
-	const char *prefix = NULL;
-	char *path;
-
-	if (env) {
-		prefix = getenv(env);
-	} else if (getuid()) {
-		pwd = getpwuid(getuid());
-		prefix = pwd ? pwd->pw_dir : NULL;
-	}
-	if (!prefix || !*prefix)
-		return errno = 0, NULL;
-
-	t (!(path = malloc((strlen(prefix) + strlen(suffix) + 1) * sizeof(char))));
-	stpcpy(stpcpy(path, prefix), suffix);
-fail:
-	return path;
 }
 
 
@@ -173,11 +87,7 @@ fail:
 int
 main(int argc, char *argv[])
 {
-#define HOOKPATH(PRE, SUF)  \
-	t (path = path ? path : hookpath(PRE, SUF), !path && errno)
-
-	struct sockaddr_un address;
-	int sock = -1, state = -1, boot = -1, real = -1, lock = -1, foreground = 0;
+	int state = -1, boot = -1, real = -1, lock = -1, foreground = 0;
 	char *path = NULL;
 	struct itimerspec spec;
 
@@ -188,18 +98,11 @@ main(int argc, char *argv[])
 		usage();
 
 	/* Get hook-script pathname. */
-	if (!getenv("SAT_HOOK_PATH")) {
-		HOOKPATH("XDG_CONFIG_HOME", "/sat/hook");
-		HOOKPATH("HOME", "/.config/sat/hook");
-		HOOKPATH(NULL, "/.config/sat/hook");
-		t (setenv("SAT_HOOK_PATH", path ? path : "/etc/sat/hook", 1));
-		free(path), path = NULL;
-	}
+	t (set_hookpath());
 
 	/* Open/create lock file and state file, and create socket. */
 	GET_FD(lock,  LOCK_FILENO,  create_lock());
 	GET_FD(state, STATE_FILENO, open_state(O_RDWR | O_CREAT, &path));
-	GET_FD(sock,  SOCK_FILENO,  create_socket(&address));
 
 	/* Create timers. */
 	GET_FD(boot, BOOT_FILENO, timerfd_create(CLOCK_BOOTTIME, 0));
@@ -210,21 +113,17 @@ main(int argc, char *argv[])
 	t (timerfd_settime(boot, TFD_TIMER_ABSTIME, &spec, NULL));
 	t (timerfd_settime(real, TFD_TIMER_ABSTIME, &spec, NULL));
 
-	/* Listen for incoming conections. */
-	t (listen(sock, SATD_BACKLOG));
-
 	/* Daemonise. */
-	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, 7, -1));
+	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, -1));
 
 	/* Change to a process image without all this initialisation text. */
-	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, address.sun_path, path, NULL);
+	execl(LIBEXECDIR "/" PACKAGE "/satd-diminished", argv0, path, NULL);
 
 fail:
 	if (errno)
 		perror(argv0);
 	free(path);
-	if (sock >= 0)  unlink(address.sun_path);
-	close(sock), close(state), close(boot), close(real), close(lock);
+	close(state), close(boot), close(real), close(lock);
 	undaemonise();
 	return 1;
 }

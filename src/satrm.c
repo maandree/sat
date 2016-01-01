@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include "daemon.h"
+#include "common.h"
 
 
 
@@ -42,13 +42,14 @@ USAGE("JOB-ID...")
 int
 main(int argc, char *argv[])
 {
-	PROLOGUE(argc >= 2, O_RDWR, NULL);
+	PROLOGUE(argc >= 2, O_RDWR);
 	NO_OPTIONS;
+	t (set_hookpath());
 
 	for (argv++; *argv; argv++)
 		t (remove_job(*argv, 0) && errno);
-	t (poke_daemon());
 
+	t (poke_daemon(0, argv0));
 	CLEANUP_START;
 	CLEANUP_END;
 }

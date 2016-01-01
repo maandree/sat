@@ -19,9 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include "daemon.h"
-#include <time.h>
-#include <sys/timerfd.h>
+#include "common.h"
 
 
 
@@ -43,9 +41,8 @@ timecmp(const struct timespec *a, const struct timespec *b)
 /**
  * Subroutine to the sat daemon: list jobs.
  * 
- * @param   argc  Should be 3.
- * @param   argv  The name of the process, the pathname of the socket,
- *                and the pathname to the state file.
+ * @param   argc  Should be 2.
+ * @param   argv  The name of the process, and the pathname to the state file.
  * @return  0     The process was successful.
  * @return  1     The process failed queuing the job.
  */

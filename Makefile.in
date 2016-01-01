@@ -57,15 +57,14 @@ _VERSION = 1.0
 _C_STD = c99
 _PEDANTIC = yes
 _BIN = sat satq satrm satr satd
-_LIBEXEC = satd-add satd-diminished satd-timer
-_OBJ_sat = sat client parse_time
-_OBJ_satq = satq daemon
-_OBJ_satrm = satrm daemon
-_OBJ_satr = satr daemon
-_OBJ_satd = satd daemon daemonise
-_OBJ_satd-add = satd-add daemon
+_LIBEXEC = satd-diminished satd-timer
+_OBJ_sat = sat common parse_time
+_OBJ_satq = satq common
+_OBJ_satrm = satrm common
+_OBJ_satr = satr common
+_OBJ_satd = satd common daemonise
 _OBJ_satd-diminished = satd-diminished
-_OBJ_satd-timer = satd-timer daemon
+_OBJ_satd-timer = satd-timer common
 _HEADER_DIRLEVELS = 1
 _CPPFLAGS = -D'PACKAGE="$(PKGNAME)"' -D'PROGRAM_VERSION="$(_VERSION)"'
 
@@ -88,7 +87,7 @@ ___EVERYTHING_INFO = sat titlepage-data content hardcopy-copying  \
                      appx/fdl appx/free-software-needs-free-documentation  \
                      chap/invoking chap/overview chap/hooks chap/output  \
                      reusable/macros reusable/paper reusable/titlepage
-___EVERYTHING_H = client common daemon daemonise parse_time
+___EVERYTHING_H = common daemonise parse_time
 _EVERYTHING = $(foreach F,$(___EVERYTHING_INFO),doc/info/$(F).texinfo)  \
               $(foreach F,$(___EVERYTHING_H),src/$(F).h)  \
               $(__EVERYTHING_ALL_COMMON) DEPENDENCIES INSTALL NEWS src/README

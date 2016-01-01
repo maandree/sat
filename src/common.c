@@ -19,12 +19,10 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include "daemon.h"
+#include "common.h"
 #include <ctype.h>
-#include <signal.h>
 #include <stdarg.h>
-#include <sys/stat.h>
-#include <sys/file.h>
+#include <pwd.h>
 #include <sys/wait.h>
 
 
@@ -101,50 +99,6 @@ pwriten(int fildes, const void *buf, size_t nbyte, size_t offset)
 
 
 /**
- * Wrapper for `read` that reads all available data.
- * 
- * `errno` is set to `EBADMSG` on success.
- * 
- * @param   fd   The file descriptor from which to to read.
- * @param   buf  Output parameter for the data.
- * @param   n    Output parameter for the number of read bytes.
- * @return       0 on success, -1 on error.
- * 
- * @throws  Any exception specified for read(3).
- * @throws  Any exception specified for realloc(3).
- */
-int
-readall(int fd, char **buf, size_t *n)
-{
-	char *buffer = NULL;
-	size_t ptr = 0, size = 128;
-	ssize_t got;
-	char *new;
-	int saved_errno;
-
-	do {
-		if ((buffer == NULL) || (ptr == size)) {
-			t (!(new = realloc(buffer, size <<= 1)));
-			buffer = new;
-		}
-		t (got = read(fd, buffer + ptr, size - ptr), got < 0);
-	} while (ptr += (size_t)got, got);
-
-	new = realloc(buffer, *n = ptr);
-	*buf = ptr ? (new ? new : buffer) : NULL;
-	shutdown(SOCK_FILENO, SHUT_RD);
-	return errno = EBADMSG, 0;
-
-fail:
-	saved_errno = errno;
-	free(buffer);
-	shutdown(SOCK_FILENO, SHUT_RD);
-	errno = saved_errno;
-	return -1;
-}
-
-
-/**
  * Unmarshal a `NULL`-terminated string array.
  * 
  * The elements are not actually copied, subpointers
@@ -213,45 +167,8 @@ reopen(int fd, int oflag)
 	if (r = open(path, oflag), r < 0)
 		return -1;
 	if (DUP2_AND_CLOSE(r, fd) == -1)
-		return saved_errno = errno, close(r), errno = saved_errno, -1;
+		return S(close(r)), -1;
 	return 0;
-}
-
-
-/**
- * Send a string to a client.
- * 
- * @param   sockfd  The file descriptor of the socket.
- * @param   outfd   The file descriptor to which the client shall output the message.
- * @param   ...     `NULL`-terminated list of string to concatenate.
- * @return          0 on success, -1 on error.
- */
-int
-send_string(int sockfd, int outfd, ...)
-{
-	va_list args;
-	size_t i, n = 0;
-	ssize_t r;
-	char out = (char)outfd;
-	const char *s;
-
-	va_start(args, outfd);
-	while ((s = va_arg(args, const char *)))
-		n += strlen(s);
-	va_end(args);
-
-	t (write(sockfd, &out, sizeof(out)) < (ssize_t)sizeof(out));
-	t (write(sockfd, &n,   sizeof(n))   < (ssize_t)sizeof(n));
-
-	va_start(args, outfd);
-	while ((s = va_arg(args, const char *)))
-		for (i = 0, n = strlen(s); i < n; i += (size_t)r)
-			t (r = write(sockfd, s + i, n - i), r <= 0);
-	va_end(args);
-
-	return 0;
-fail:
-	return -1;
 }
 
 
@@ -287,8 +204,7 @@ run_job_or_hook(struct job *job, const char *hook)
 	}
 
 	if (!(pid = fork())) {
-		close(SOCK_FILENO), close(STATE_FILENO);
-		close(BOOT_FILENO), close(REAL_FILENO);
+		close(STATE_FILENO), close(BOOT_FILENO), close(REAL_FILENO);
 		(void)(status = chdir(envp[0]));
 		environ = envp + 1;
 		execvp(*argv, argv);
@@ -297,9 +213,7 @@ run_job_or_hook(struct job *job, const char *hook)
 
 	t ((pid < 0) || (waitpid(pid, &status, 0) != pid));
 fail:
-	saved_errno = errno;
-	free(args), free(argv), free(envp);
-	errno = saved_errno;
+	S(free(args), free(argv), free(envp));
 	return status ? 1 : -!!saved_errno;
 }
 
@@ -369,10 +283,7 @@ found_it:
 	return rc;
 
 fail:
-	saved_errno = errno;
-	flock(STATE_FILENO, LOCK_UN);
-	free(buf), free(job_full);
-	errno = saved_errno;
+	S(flock(STATE_FILENO, LOCK_UN), free(buf), free(job_full));
 	return -1;
 }
 
@@ -436,8 +347,7 @@ dup2_and_null(int old, int new)
 	if (fd == old)   return new;  t (DUP2_AND_CLOSE(fd, old));
 	return new;
 fail:
-	saved_errno = errno, close(fd), errno = saved_errno;
-	return -1;
+	return S(close(fd)), -1;
 }
 
 
@@ -467,7 +377,7 @@ open_state(int open_flags, char **state_path)
 	if (state_path)  *state_path = path, path = NULL;
 	else             free(path), path = NULL;
 fail:
-	saved_errno = errno, free(path), errno = saved_errno;
+	S(free(path));
 	if (!(open_flags & O_CREAT) && ((errno == ENOENT) || (errno == ENOTDIR)))
 		errno = 0;
 	return fd;
@@ -478,11 +388,114 @@ fail:
  * Let the daemon know that it may need to
  * update the timers, and perhaps exit.
  * 
+ * @param   start  Start the daemon if it is not running?
+ * @param   name   The name of the process.
+ * @return         0 on success, -1 on error.
+ */
+int
+poke_daemon(int start, const char *name)
+{
+	char *path = NULL;
+	const char *dir;
+	pid_t pid;
+	int fd = -1, status, saved_errno;
+
+	/* Get the lock file's pathname. */
+	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
+	t (!(path = malloc(strlen(dir) * sizeof(char) + sizeof("/" PACKAGE "/lock"))));
+	stpcpy(stpcpy(path, dir), "/" PACKAGE "/lock");
+
+	/* Any daemon listening? */
+	fd = open(path, O_RDONLY);
+	if (fd == -1) {
+		t ((errno != ENOENT) && (errno != ENOTDIR));
+	} else {
+		if (flock(fd, LOCK_SH | LOCK_NB /* and LOCK_DRY if that was ever added... */))
+			t (start = 0, errno != EWOULDBLOCK);
+		else
+			flock(fd, LOCK_UN);
+		t (read(fd, &pid, sizeof(pid)) < (ssize_t)sizeof(pid));
+		close(fd), fd = -1;
+	}
+
+	/* Start daemon if not running, otherwise poke it. */
+	if (start) {
+		switch ((pid = fork())) {
+		case -1:
+			goto fail;
+		case 0:
+			execl(BINDIR "/satd", BINDIR "/satd", NULL);
+			perror(name);
+			exit(1);
+		default:
+			t (waitpid(pid, &status, 0) != pid);
+			t (errno = 0, status);
+			break;
+		}
+	} else {
+		t (kill(pid, SIGCHLD));
+	}
+
+	return 0;
+fail:
+	return S(close(fd), free(path)), -1;
+}
+
+
+/**
+ * Construct the pathname for the hook script.
+ * 
+ * @param   env     The environment variable to use for the beginning
+ *                  of the pathname, `NULL` for the home directory.
+ * @param   suffix  The rest of the pathname.
+ * @return          The pathname.
+ * 
+ * @throws  0  The environment variable is not set, or, if `env` is
+ *             `NULL` the user is root or homeless.
+ */
+static char *
+hookpath(const char *env, const char *suffix)
+{
+	struct passwd *pwd;
+	const char *prefix = NULL;
+	char *path;
+
+	if (env) {
+		prefix = getenv(env);
+	} else if (getuid()) {
+		pwd = getpwuid(getuid());
+		prefix = pwd ? pwd->pw_dir : NULL;
+	}
+	if (!prefix || !*prefix)
+		return errno = 0, NULL;
+
+	t (!(path = malloc((strlen(prefix) + strlen(suffix) + 1) * sizeof(char))));
+	stpcpy(stpcpy(path, prefix), suffix);
+fail:
+	return path;
+}
+
+
+/**
+ * Set SAT_HOOK_PATH.
+ * 
  * @return  0 on success, -1 on error.
  */
 int
-poke_daemon(void)
+set_hookpath(void)
 {
-	return 0; /* TODO poke_daemon */
+#define HOOKPATH(PRE, SUF)  \
+	t (path = path ? path : hookpath(PRE, SUF), !path && errno)
+	char *path = NULL;
+	int saved_errno;
+	if (!getenv("SAT_HOOK_PATH")) {
+		HOOKPATH("XDG_CONFIG_HOME", "/sat/hook");
+		HOOKPATH("HOME", "/.config/sat/hook");
+		HOOKPATH(NULL, "/.config/sat/hook");
+		t (setenv("SAT_HOOK_PATH", path ? path : "/etc/sat/hook", 1));
+	}
+	return free(path), 0;
+fail:
+	return S(free(path)), -1;
 }
 

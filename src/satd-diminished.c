@@ -19,17 +19,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include "daemon.h"
-#include <unistd.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <stdint.h>
+#include "common.h"
 #include <sys/wait.h>
-#include <sys/stat.h>
-#include <sys/select.h>
-#include <sys/timerfd.h>
 
 
 
@@ -100,20 +91,15 @@ sighandler(int signo)
 
 
 /**
- * Spawn a libexec.
+ * Spawn a satd-timer.
  * 
- * @param   command  The command to spawn, -1 for "timer".
- * @param   fd       File descriptor to the socket, -1 iff `command` is -1.
- * @param   argv     `argv` from `main`.
- * @param   envp     `envp` from `main`.
- * @return           0 on success, -1 on error.
+ * @param   argv  `argv` from `main`.
+ * @param   envp  `envp` from `main`.
+ * @return        0 on success, -1 on error.
  */
 static int
-spawn(int command, int fd, char *argv[], char *envp[])
+spawn(char *argv[], char *envp[])
 {
-#define IMAGE(CASE, NAME)  case CASE:  image = DAEMON_IMAGE(NAME);  break
-
-	const char *image;
 	pid_t pid;
 
 	/* Try forking until we success. */
@@ -126,31 +112,14 @@ spawn(int command, int fd, char *argv[], char *envp[])
 	/* Parent. */
 	if (pid) {
 		child_count++;
-		if (command < 0)
-			timer_pid = pid;
+		timer_pid = pid;
 		return 0;
 	}
 
 	/* Child. */
-	switch (command) {
-	IMAGE(SAT_QUEUE,  "add");
-	IMAGE(-1,         "timer");
-	default:
-		fprintf(stderr, "%s: invalid command received.\n", argv[0]);
-		goto silent_fail;
-	}
-	if (command < 0) {
-		close(LOCK_FILENO), close(SOCK_FILENO);
-	} else {
-		close(LOCK_FILENO), close(BOOT_FILENO), close(REAL_FILENO);
-		t (DUP2_AND_CLOSE(fd, SOCK_FILENO) == -1);
-		fd = SOCK_FILENO;
-	}
-	execve(image, argv, envp);
-fail:
+	close(LOCK_FILENO);
+	execve(DAEMON_IMAGE("timer"), argv, envp);
 	perror(argv[0]);
-silent_fail:
-	close(fd);
 	exit(1);
 }
 
@@ -193,9 +162,8 @@ test_timer(int fd, const fd_set *fdset)
 /**
  * The sat daemon.
  * 
- * @param   argc  Should be 3.
- * @param   argv  The name of the process, the pathname of the socket,
- *                and the pathname to the state file.
+ * @param   argc  Should be 2.
+ * @param   argv  The name of the process, and the pathname to the state file.
  * @param   envp  The environment.
  * @return  0     The process was successful.
  * @return  1     The process failed queuing the job.
@@ -203,8 +171,7 @@ test_timer(int fd, const fd_set *fdset)
 int
 main(int argc, char *argv[], char *envp[])
 {
-	int fd = -1, rc = 0, accepted = 0, r, expired = 0;
-	unsigned char type;
+	int fd = -1, rc = 0, r, expired = 0;
 	fd_set fdset;
 	struct stat attr;
 
@@ -221,16 +188,16 @@ again:
 	}
 	/* Need to set new timer values? */
 	if (expired || ((received_signo == SIGCHLD) && (timer_pid == NO_TIMER_SPAWNED)))
-		t (expired = 0, spawn(-1, -1, argv, envp));
+		t (expired = 0, spawn(argv, envp));
 	received_signo = 0;
 #if 1 || !defined(DEBUG)
 	/* Can we quit yet? */
-	if (accepted && !child_count) {
+	if (expired && !child_count) {
 		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
 		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
 		t (fstat(STATE_FILENO, &attr));
 		if (attr.st_size > (off_t)sizeof(size_t))
-			t (spawn(-1, -1, argv, envp));
+			t (spawn(argv, envp));
 		else
 			goto done;
 	 }
@@ -238,7 +205,6 @@ again:
 not_done:
 	/* Wait for something to happen. */
 	FD_ZERO(&fdset);
-	FD_SET(SOCK_FILENO, &fdset);
 	FD_SET(BOOT_FILENO, &fdset);
 	FD_SET(REAL_FILENO, &fdset); /* This is the highest one. */
 	if (select(REAL_FILENO + 1, &fdset, NULL, NULL, NULL) == -1) {
@@ -249,35 +215,19 @@ not_done:
 	t ((expired |= test_timer(BOOT_FILENO, &fdset)) < 0);
 	t ((expired |= test_timer(REAL_FILENO, &fdset)) < 0);
 	/* Accept connections. */
-	if (!FD_ISSET(SOCK_FILENO, &fdset))
-		goto again;
-	if (fd = accept(SOCK_FILENO, NULL, NULL), fd == -1) {
-		t ((errno != ECONNABORTED) && (errno != EINTR));
-		/* Including EMFILE, ENFILE, and ENOMEM because of potential resource leak. */
-		goto again;
-	}
-	accepted = 1;
-	if (read(fd, &type, sizeof(type)) <= 0)
-		perror(argv[0]);
-	else
-		t (spawn((int)type, fd, argv, envp));
-	close(fd), fd = -1;
 	goto again;
 
 fail:
 	perror(argv[0]);
-	if (fd >= 0)
-		close(fd);
+	close(fd);
 	rc = 1;
 done:
 	while (waitpid(-1, NULL, 0) > 0);
 	unlink(argv[1]);
 	if (!rc)
 		unlink(argv[2]);
-	close(SOCK_FILENO);
 	close(STATE_FILENO);
 	return rc;
-
 	(void) argc;
 }
 

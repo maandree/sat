@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include "daemon.h"
+#include "common.h"
 #include <stdarg.h>
 
 
@@ -223,9 +223,7 @@ print_job(struct job *job)
 	ARRAY(envp + 1);  t (print("\n\n", NULL));
 
 done:
-	saved_errno = errno;
-	free(qstr), free(args), free(argv), free(wdir), free(envp);
-	errno = saved_errno;
+	S(free(qstr), free(args), free(argv), free(wdir), free(envp));
 	return rc;
 fail:
 	rc = -1;
@@ -247,7 +245,7 @@ main(int argc, char *argv[])
 {
 	struct job **jobs = NULL;
 	struct job **job;
-	PROLOGUE(argc < 2, O_RDONLY, NULL);
+	PROLOGUE(argc < 2, O_RDONLY);
 
 	t (!(jobs = get_jobs()));
 	for (job = jobs; *job; job++)
