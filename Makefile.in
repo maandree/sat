@@ -51,7 +51,7 @@ PKGNAME = sat
 
 # Package information.
 _PROJECT = sat
-_VERSION = 1.0
+_VERSION = 1.1
 
 # Used by mk/lang-c.mk
 _C_STD = c99
