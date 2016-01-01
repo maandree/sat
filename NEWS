@@ -1,6 +1,6 @@
 sat NEWS                                              -*- outline -*-
 
-* Noteworthy changes in release 1.1 (2016-(01)Jan-01 UTC [hopefully]) [stable]
+* Noteworthy changes in release 1.1 (2016-(01)Jan-01 UTC) [stable]
 
   sat does not use a daemon socket anymore,
   the actions of the commands are handled directly
