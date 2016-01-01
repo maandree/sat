@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -39,6 +39,12 @@
 #ifndef SATD_BACKLOG
 # define SATD_BACKLOG  5
 #endif
+#if SATD_BACKLOG > SOMAXCONN
+# undef SATD_BACKLOG
+# defined SATD_BACKLOG SOMAXCONN
+#endif
+
+#define  close(fd)  (fd < 0 ? 0 : close(fd))
 
 
 
@@ -56,10 +62,9 @@ USAGE("[-f]")
 static int
 create_socket(struct sockaddr_un *address)
 {
-	int fd = -1, bound = 0;
 	const void *_cvoid;
 	const char *dir;
-	int saved_errno;
+	int fd = -1, saved_errno;
 
 	/* Get socket address. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
@@ -71,19 +76,13 @@ create_socket(struct sockaddr_un *address)
 	/* Create socket. */
 	unlink(address->sun_path);
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
-	t (fchmod(fd, S_IRWXU) == -1);
-	t (bind(fd, (const struct sockaddr *)(_cvoid = address), (socklen_t)sizeof(*address)) == -1);
+	t (fchmod(fd, S_IRWXU));
+	t (bind(fd, (const struct sockaddr *)(_cvoid = address), (socklen_t)sizeof(*address)));
 	/* EADDRINUSE just means that the file already exists, not that it is actually used. */
-	bound = 1;
 
 	return fd;
 fail:
-	saved_errno = errno;
-	if (fd >= 0)
-		close(fd);
-	if (bound)
-		unlink(address->sun_path);
-	errno = saved_errno;
+	saved_errno = errno, close(fd), errno = saved_errno;
 	return -1;
 }
 
@@ -109,9 +108,7 @@ create_state(char **state_path)
 	*state_path = path, path = NULL;
 
 fail:
-	saved_errno = errno;
-	free(path);
-	errno = saved_errno;
+	saved_errno = errno, free(path), errno = saved_errno;
 	return fd;
 }
 
@@ -127,7 +124,7 @@ create_lock(void)
 	const char *dir;
 	char *path;
 	char *p;
-	int fd = -1, saved_errno;
+	int fd = -1, saved_errno = 0;
 
 	/* Create directory. */
 	dir = getenv("XDG_RUNTIME_DIR"), dir = (dir ? dir : "/run");
@@ -141,16 +138,17 @@ create_lock(void)
 
 	/* Check that the daemon is not running, and mark it as running. */
 	if (flock(fd, LOCK_EX | LOCK_NB)) {
-		t (fd = -1, errno != EWOULDBLOCK);
+		t (errno != EWOULDBLOCK);
 		fprintf(stderr, "%s: the daemon is already in reading.\n", argv0);
 		errno = 0;
 		goto fail;
 	}
 
+	goto done;
 fail:
-	saved_errno = errno;
-	free(path);
-	errno = saved_errno;
+	saved_errno = errno, close(fd);
+done:
+	free(path), errno = saved_errno;
 	return fd;
 }
 
@@ -169,29 +167,23 @@ fail:
 static char *
 hookpath(const char *env, const char *suffix)
 {
+	struct passwd *pwd;
 	const char *prefix = NULL;
 	char *path;
-	struct passwd *pwd;
 
-	if (!env) {
-		if (!getuid())
-			goto try_next;
+	if (env) {
+		prefix = getenv(env);
+	} else if (getuid()) {
 		pwd = getpwuid(getuid());
 		prefix = pwd ? pwd->pw_dir : NULL;
-	} else {
-		prefix = getenv(env);
 	}
 	if (!prefix || !*prefix)
-		goto try_next;
+		return errno = 0, NULL;
 
 	t (!(path = malloc((strlen(prefix) + strlen(suffix) + 1) * sizeof(char))));
 	stpcpy(stpcpy(path, prefix), suffix);
-
-	return path;
-try_next:
-	errno = 0;
 fail:
-	return NULL;
+	return path;
 }
 
 
@@ -208,25 +200,14 @@ fail:
 static int
 dup2_and_null(int old, int new)
 {
-	int fd = -1;
-	int saved_errno;
+	int fd = -1, saved_errno;
 
-	if (old == new)  goto done;
-	t (dup2(old, new) == -1);
-	close(old);
-	if (old >= 3)   goto done;
-	t (fd = open("/dev/null", O_RDWR), fd == -1);
-	if (fd == old)  goto done;
-	t (dup2(fd, old) == -1);
-	close(fd), fd = -1;
-
-done:
+	if (old == new)  return new;  t (DUP2_AND_CLOSE(old, new));
+	if (old >= 3)    return new;  t (fd = open("/dev/null", O_RDWR), fd == -1);
+	if (fd == old)   return new;  t (DUP2_AND_CLOSE(fd, old));
 	return new;
 fail:
-	saved_errno = errno;
-	if (fd >= 0)
-		close(fd);
-	errno = saved_errno;
+	saved_errno = errno, close(fd), errno = saved_errno;
 	return -1;
 }
 
@@ -259,9 +240,8 @@ main(int argc, char *argv[])
 	/* Parse command line. */
 	if (argc > 0)  argv0 = argv[0];
 	if (argc > 2)  usage();
-	if (argc == 2)
-		if (!(foreground = !strcmp(argv[1], "-f")))
-			usage();
+	if ((argc == 2) && (!(foreground = !strcmp(argv[1], "-f"))))
+		usage();
 
 	/* Get hook-script pathname. */
 	if (!getenv("SAT_HOOK_PATH")) {
@@ -287,11 +267,7 @@ main(int argc, char *argv[])
 	t (timerfd_settime(real, TFD_TIMER_ABSTIME, &spec, NULL));
 
 	/* Listen for incoming conections. */
-#if SOMAXCONN < SATD_BACKLOG
-	t (listen(sock, SOMAXCONN));
-#else
 	t (listen(sock, SATD_BACKLOG));
-#endif
 
 	/* Daemonise. */
 	t (foreground ? 0 : daemonise("satd", DAEMONISE_KEEP_FDS | DAEMONISE_NEW_PID, 3, 4, 5, 6, 7, -1));
@@ -303,14 +279,8 @@ fail:
 	if (errno)
 		perror(argv0);
 	free(path);
-	if (sock >= 0) {
-		unlink(address.sun_path);
-		close(sock);
-	}
-	if (state >= 0)  close(state);
-	if (boot  >= 0)  close(boot);
-	if (real  >= 0)  close(real);
-	if (lock  >= 0)  close(lock);
+	if (sock >= 0)  unlink(address.sun_path);
+	close(sock), close(state), close(boot), close(real), close(lock);
 	undaemonise();
 	return 1;
 }

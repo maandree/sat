@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -65,6 +65,14 @@ static volatile pid_t timer_pid = NO_TIMER_SPAWNED;
  */
 static volatile pid_t child_count = 0;
 
+/**
+ * Timer specification for an unset timer.
+ */
+static const struct itimerspec nilspec = {
+	.it_interval.tv_sec  = 0, .it_value.tv_sec  = 0,
+	.it_interval.tv_nsec = 0, .it_value.tv_nsec = 0,
+};
+
 
 
 /**
@@ -103,45 +111,50 @@ sighandler(int signo)
 static int
 spawn(int command, int fd, char *argv[], char *envp[])
 {
+#define IMAGE(CASE, NAME)  case CASE:  image = DAEMON_IMAGE(NAME);  break
+
 	const char *image;
 	pid_t pid;
 
-fork_again:
-	switch ((pid = fork())) {
-	case -1:
+	/* Try forking until we success. */
+	while ((pid = fork()) == -1) {
 		if (errno != EAGAIN)
 			return -1;
 		(void) sleep(1); /* Possibly shorter because of SIGCHLD. */
-		goto fork_again;
-	case 0:
-		switch (command) {
-		case SAT_QUEUE:   image = DAEMON_IMAGE("add");    break;
-		case SAT_REMOVE:  image = DAEMON_IMAGE("rm");     break;
-		case SAT_PRINT:   image = DAEMON_IMAGE("list");   break;
-		case SAT_RUN:     image = DAEMON_IMAGE("run");    break;
-		case -1:          image = DAEMON_IMAGE("timer");  break;
-		default:
-			fprintf(stderr, "%s: invalid command received.\n", argv[0]);
-			goto child_fail;
-		}
-		if (command < 0) {
-			close(SOCK_FILENO), close(LOCK_FILENO);
-			execve(image, argv, envp);
-		} else {
-			close(BOOT_FILENO), close(REAL_FILENO), close(LOCK_FILENO);
-			if (dup2(fd, SOCK_FILENO) != -1)
-				close(fd), fd = SOCK_FILENO, execve(image, argv, envp);
-		}
-		perror(argv[0]);
-	child_fail:
-		close(fd);
-		exit(1);
-	default:
+	}
+
+	/* Parent. */
+	if (pid) {
 		child_count++;
 		if (command < 0)
 			timer_pid = pid;
 		return 0;
 	}
+
+	/* Child. */
+	switch (command) {
+	IMAGE(SAT_QUEUE,  "add");
+	IMAGE(SAT_REMOVE, "rm");
+	IMAGE(SAT_PRINT,  "list");
+	IMAGE(SAT_RUN,    "run");
+	IMAGE(-1,         "timer");
+	default:
+		fprintf(stderr, "%s: invalid command received.\n", argv[0]);
+		goto silent_fail;
+	}
+	if (command < 0) {
+		close(LOCK_FILENO), close(SOCK_FILENO);
+	} else {
+		close(LOCK_FILENO), close(BOOT_FILENO), close(REAL_FILENO);
+		t (DUP2_AND_CLOSE(fd, SOCK_FILENO) == -1);
+		fd = SOCK_FILENO;
+	}
+	execve(image, argv, envp);
+fail:
+	perror(argv[0]);
+silent_fail:
+	close(fd);
+	exit(1);
 }
 
 
@@ -173,14 +186,10 @@ static int
 test_timer(int fd, const fd_set *fdset)
 {
 	int64_t _overrun;
-	struct itimerspec spec = {
-		.it_interval.tv_sec  = 0, .it_value.tv_sec  = 0,
-		.it_interval.tv_nsec = 0, .it_value.tv_nsec = 0,
-	};
 	if (!FD_ISSET(fd, fdset))                return 0;
 	if (read(fd, &_overrun, (size_t)8) < 8)  return -1;
 	if (timer_pid == NO_TIMER_SPAWNED)       return 1;
-	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &spec, NULL) ? -1 : 1;
+	return timerfd_settime(fd, TFD_TIMER_ABSTIME, &nilspec, NULL) * 2 + 1;
 }
 
 
@@ -208,16 +217,17 @@ main(int argc, char *argv[], char *envp[])
 
 	/* The magnificent loop. */
 again:
+	/* Update the a newer version of the daemon? */
 	if (received_signo == SIGHUP) {
 		execve(DAEMON_IMAGE("diminished"), argv, envp);
 		perror(argv[0]);
 	}
-	if (expired || ((received_signo == SIGCHLD) && (timer_pid == NO_TIMER_SPAWNED))) {
-		expired = 0;
-		t (spawn(-1, -1, argv, envp));
-	}
+	/* Need to set new timer values? */
+	if (expired || ((received_signo == SIGCHLD) && (timer_pid == NO_TIMER_SPAWNED)))
+		t (expired = 0, spawn(-1, -1, argv, envp));
 	received_signo = 0;
 #if 1 || !defined(DEBUG)
+	/* Can we quit yet? */
 	if (accepted && !child_count) {
 		t (r = is_timer_set(BOOT_FILENO), r < 0);  if (r) goto not_done;
 		t (r = is_timer_set(REAL_FILENO), r < 0);  if (r) goto not_done;
@@ -229,6 +239,7 @@ again:
 	 }
 #endif
 not_done:
+	/* Wait for something to happen. */
 	FD_ZERO(&fdset);
 	FD_SET(SOCK_FILENO, &fdset);
 	FD_SET(BOOT_FILENO, &fdset);
@@ -237,20 +248,16 @@ not_done:
 		t (errno != EINTR);
 		goto again;
 	}
+	/* Was any jobs expired? */
 	t ((expired |= test_timer(BOOT_FILENO, &fdset)) < 0);
 	t ((expired |= test_timer(REAL_FILENO, &fdset)) < 0);
+	/* Accept connections. */
 	if (!FD_ISSET(SOCK_FILENO, &fdset))
 		goto again;
 	if (fd = accept(SOCK_FILENO, NULL, NULL), fd == -1) {
-		switch (errno) {
-		case ECONNABORTED:
-		case EINTR:
-			goto again;
-		default:
-			/* Including EMFILE, ENFILE, and ENOMEM
-			 * because of potential resource leak. */
-			goto fail;
-		}
+		t ((errno != ECONNABORTED) && (errno != EINTR));
+		/* Including EMFILE, ENFILE, and ENOMEM because of potential resource leak. */
+		goto again;
 	}
 	accepted = 1;
 	if (read(fd, &type, sizeof(type)) <= 0)

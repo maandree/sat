@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -99,7 +99,7 @@ send_command(enum command cmd, size_t n, const char *restrict msg)
 	/* Create socket. */
 	stpcpy(strrchr(address.sun_path, '/'), "/socket");
 	t ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1);
-	t (connect(fd, (const struct sockaddr *)(_cvoid = &address), (socklen_t)sizeof(address)) == -1);
+	t (connect(fd, (const struct sockaddr *)(_cvoid = &address), (socklen_t)sizeof(address)));
 
 	/* Send message. */
 	t (write(fd, &cmd_, sizeof(cmd_)) < (ssize_t)sizeof(cmd_));
@@ -133,10 +133,8 @@ receive_again:
 	goto receive_again;
 
 done:
-	shutdown(fd, SHUT_RD);
-	close(fd);
-	errno = 0;
-	return -goterr;
+	shutdown(fd, SHUT_RD), close(fd);
+	return errno = 0, -goterr;
 
 fail:
 	saved_errno = (goterr ? 0 : errno);
@@ -144,8 +142,7 @@ fail:
 		close(fd);
 	free(buf);
 	errno = saved_errno;
-	if (eot)
-		goto done;
+	if (eot)  goto done;
 	return -1;
 }
 
@@ -160,8 +157,7 @@ size_t
 measure_array(char *array[])
 {
 	size_t rc = 0;
-	for (; *array; array++)
-		rc += strlen(*array) + 1;
+	while (*array)  rc += strlen(*array++) + 1;
 	return rc * sizeof(char);
 }
 
@@ -176,10 +172,8 @@ measure_array(char *array[])
 char *
 store_array(char *restrict storage, char *array[])
 {
-	for (; *array; array++) {
+	for (; *array; array++, storage++)
 		storage = stpcpy(storage, *array);
-		*storage++ = 0;
-	}
 	return storage;
 }
 

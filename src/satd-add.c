@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -48,7 +48,7 @@ main(int argc, char *argv[])
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n));
 	t (n < sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec));
-	n -= sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec);
+	n  -=  sizeof(int) + sizeof(clockid_t) + sizeof(struct timespec);
 	msg_argc = *(int *)(message + n);
 	t ((msg_argc < 1) || !n || message[n - 1]);
 	for (i = n; i--; elements += !message[i]);
@@ -56,11 +56,10 @@ main(int argc, char *argv[])
 
 	/* Parse message. */
 	t (!(job = malloc(sizeof(*job) + n)));
-	job->argc = msg_argc;
-	job->clk = *(clockid_t *)(message + n + sizeof(int));
-	job->ts = *(struct timespec *)(message + n + sizeof(int) + sizeof(clockid_t));
-	job->n = n;
-	memcpy(job->payload, message, n);
+	job->argc = msg_argc;/* *(int *)(message + n);    "See a few lines above.";  */
+	job->clk  =       *(clockid_t *)(message + n + sizeof(int));
+	job->ts   = *(struct timespec *)(message + n + sizeof(int) + sizeof(clockid_t));
+	memcpy(job->payload, message, job->n = n);
 
 	/* Update state file and run hook. */
 	t (flock(STATE_FILENO, LOCK_EX));
@@ -73,8 +72,7 @@ main(int argc, char *argv[])
 	t (pwriten(STATE_FILENO, &(job->no), sizeof(job->no), (size_t)0) < (ssize_t)sizeof(job->no));
 	if (attr.st_size < (off_t)sizeof(job->no))
 		attr.st_size = (off_t)sizeof(job->no);
-	n += sizeof(*job);
-	t (pwriten(STATE_FILENO, job, n, (size_t)(attr.st_size)) < (ssize_t)n);
+	t (pwriten(STATE_FILENO, job, sizeof(*job) + n, (size_t)(attr.st_size)) < (ssize_t)n);
 	fsync(STATE_FILENO);
 	run_job_or_hook(job, "queued");
 	t (flock(STATE_FILENO, LOCK_UN));

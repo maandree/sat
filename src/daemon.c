@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -52,9 +52,9 @@ extern char **environ;
 		if (r == 0)  \
 			break;  \
 		n += r;  \
-		nbyte -= (size_t)r;  \
+		buffer += r;  \
 		offset += (size_t)r;  \
-		buffer += (size_t)r;  \
+		nbyte -= (size_t)r;  \
 	}  \
 done:  \
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);  \
@@ -103,8 +103,6 @@ pwriten(int fildes, const void *buf, size_t nbyte, size_t offset)
 /**
  * Wrapper for `read` that reads all available data.
  * 
- * Sets `errno` to `EBADMSG` on success.
- * 
  * @param   fd   The file descriptor from which to to read.
  * @param   buf  Output parameter for the data.
  * @param   n    Output parameter for the number of read bytes.
@@ -118,21 +116,20 @@ readall(int fd, char **buf, size_t *n)
 {
 	char *buffer = NULL;
 	size_t ptr = 0, size = 128;
-	ssize_t got = 1;
+	ssize_t got;
 	char *new;
 	int saved_errno;
 
-	for (; got; ptr += (size_t)got) {
+	do {
 		if ((buffer == NULL) || (ptr == size)) {
 			t (!(new = realloc(buffer, size <<= 1)));
 			buffer = new;
 		}
 		t (got = read(fd, buffer + ptr, size - ptr), got < 0);
-	}
+	} while (ptr += (size_t)got, got);
 
-	new = realloc(buffer, ptr);
+	new = realloc(buffer, *n = ptr);
 	*buf = ptr ? (new ? new : buffer) : NULL;
-	*n = ptr;
 	shutdown(SOCK_FILENO, SHUT_RD);
 	return 0;
 
@@ -164,15 +161,12 @@ restore_array(char *buf, size_t len, size_t *n)
 	char **rc = malloc((len + 1) * sizeof(char*));
 	char **new = NULL;
 	size_t i = 0, e = 0;
+
 	t (!rc);
-	while (i < len) {
-		rc[e++] = buf + i;
-		i += strlen(buf + i) + 1;
-	}
-	rc[e] = NULL;
-	new = realloc(rc, (e + 1) * sizeof(char*));
-	if (n)
-		*n = e;
+	while (i < len)  i += strlen(rc[e++] = buf + i) + 1;
+	if (n)           *n = e;
+	rc[e++] = NULL;
+	new = realloc(rc, e * sizeof(char*));
 fail:
 	return new ? new : rc;
 }
@@ -216,9 +210,9 @@ reopen(int fd, int oflag)
 	sprintf(path, "/dev/fd/%i", fd);
 	if (r = open(path, oflag), r < 0)
 		return -1;
-	if (dup2(r, fd) == -1)
+	if (DUP2_AND_CLOSE(r, fd) == -1)
 		return saved_errno = errno, close(r), errno = saved_errno, -1;
-	return close(r), 0;
+	return 0;
 }
 
 
@@ -245,7 +239,7 @@ send_string(int sockfd, int outfd, ...)
 	va_end(args);
 
 	t (write(sockfd, &out, sizeof(out)) < (ssize_t)sizeof(out));
-	t (write(sockfd, &n, sizeof(n)) < (ssize_t)sizeof(n));
+	t (write(sockfd, &n,   sizeof(n))   < (ssize_t)sizeof(n));
 
 	va_start(args, outfd);
 	while ((s = va_arg(args, const char *)))
@@ -290,28 +284,19 @@ run_job_or_hook(struct job *job, const char *hook)
 		argv[1] = (strstr)(hook, hook); /* strstr: just to remove a warning */
 	}
 
-	switch ((pid = fork())) {
-	case -1:
-		goto fail;
-	case 0:
-		close(SOCK_FILENO);
-		close(STATE_FILENO);
-		close(BOOT_FILENO);
-		close(REAL_FILENO);
+	if (!(pid = fork())) {
+		close(SOCK_FILENO), close(STATE_FILENO);
+		close(BOOT_FILENO), close(REAL_FILENO);
 		(void)(status = chdir(envp[0]));
 		environ = envp + 1;
 		execvp(*argv, argv);
 		exit(1);
-	default:
-		t (waitpid(pid, &status, 0) != pid);
-		break;
 	}
 
+	t ((pid < 0) || (waitpid(pid, &status, 0) != pid));
 fail:
 	saved_errno = errno;
-	free(args);
-	free(argv);
-	free(envp);
+	free(args), free(argv), free(envp);
 	errno = saved_errno;
 	return status ? 1 : -!!saved_errno;
 }
@@ -336,7 +321,7 @@ remove_job(const char *jobno, int runjob)
 	struct stat attr;
 	struct job job;
 	struct job *job_full = NULL;
-	int rc = 0, saved_errno;
+	int rc = 0, saved_errno = 0;
 
 	if (jobno) {
 		no = (errno = 0, strtoul)(jobno, &end, 10);
@@ -351,11 +336,11 @@ remove_job(const char *jobno, int runjob)
 		if (!jobno || (job.no == no))
 			goto found_it;
 	}
-	t (flock(STATE_FILENO, LOCK_UN));
+	flock(STATE_FILENO, LOCK_UN); /* Failure isn't fatal. */
 	return errno = 0, -1;
 
 found_it:
-	job_full = malloc(sizeof(job) + job.n);
+	t (!(job_full = malloc(sizeof(job) + job.n)));
 	*job_full = job;
 	t (preadn(STATE_FILENO, job_full->payload, job.n, off + sizeof(job)) < (ssize_t)(job.n));
 	n -= off + sizeof(job) + job.n;
@@ -372,21 +357,19 @@ found_it:
 		saved_errno = errno;
 		run_job_or_hook(job_full, rc ? "failure" : "success");
 		rc = rc == 1 ? 0 : rc;
-		free(job_full);
-		errno = saved_errno;
 	} else {
 		run_job_or_hook(job_full, "removed");
-		free(job_full);
 	}
 
-	flock(STATE_FILENO, LOCK_UN); /* Unlock late so that hooks are synchronised. */
+	free(job_full);
+	flock(STATE_FILENO, LOCK_UN); /* Unlock late so that hooks are synchronised. Failure isn't fatal. */
+	errno = saved_errno;
 	return rc;
 
 fail:
 	saved_errno = errno;
 	flock(STATE_FILENO, LOCK_UN);
-	free(buf);
-	free(job_full);
+	free(buf), free(job_full);
 	errno = saved_errno;
 	return -1;
 }
@@ -418,16 +401,14 @@ get_jobs(void)
 		t (preadn(STATE_FILENO, js[j++]->payload, job.n, off) < (ssize_t)(job.n));
 		off += job.n;
 	}
-	js[j] = NULL;
 	t (flock(STATE_FILENO, LOCK_UN));
-	return js;
+	return js[j] = NULL, js;
 
 fail:
 	saved_errno = errno;
-	while (j--)
-		free(js[j]);
-	free(js);
 	flock(STATE_FILENO, LOCK_UN);
+	while (j--)  free(js[j]);
+	free(js);
 	errno = saved_errno;
 	return NULL;
 }

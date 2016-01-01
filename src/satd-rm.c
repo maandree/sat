@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -43,8 +43,7 @@ main(int argc, char *argv[])
 
 	/* Receive and validate message. */
 	t (readall(SOCK_FILENO, &message, &n) || !n || message[n - 1]);
-	msg_argv = restore_array(message, n, NULL);
-	t (!msg_argv);
+	t (!(msg_argv = restore_array(message, n, NULL)));
 
 	/* Perform action. */
 	for (arg = msg_argv; *arg; arg++)

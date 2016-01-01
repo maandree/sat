@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -88,11 +88,11 @@ retry:
 
 	/* Construct message to send to the daemon. */
 	n = measure_array(argv) + size + measure_array(envp);
-	t (!(msg = malloc(n + sizeof(int) + sizeof(clk) + sizeof(ts))));
+	t (!(msg = malloc(n + sizeof(argc) + sizeof(clk) + sizeof(ts))));
 	store_array(getcwd(store_array(msg, argv), size) + size, envp);
-	memcpy(msg + n, &argc, sizeof(int)), n += sizeof(int);
-	memcpy(msg + n, &clk,  sizeof(clk)), n += sizeof(clk);
-	memcpy(msg + n, &ts,   sizeof(ts)),  n += sizeof(ts);
+	memcpy(msg + n, &argc, sizeof(argc)), n += sizeof(argc);
+	memcpy(msg + n, &clk,  sizeof(clk)),  n += sizeof(clk);
+	memcpy(msg + n, &ts,   sizeof(ts)),   n += sizeof(ts);
 
 	/* Send job to daemon, start daemon if necessary. */
 	SEND(SAT_QUEUE, n, msg);

@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -89,14 +89,25 @@
  * 
  * @param  ...  The statement.
  */
-# ifdef DEBUG
+# ifndef DEBUG
+#  define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
+# else
 #  define t(...)  do { if ((__VA_ARGS__) ? (failed__ = #__VA_ARGS__) : 0) { (perror)(failed__); goto fail; } } while (0)
 static const char *failed__ = NULL;
 #  define perror(_)  ((void)(_))
-# else
-#  define t(...)  do { if (__VA_ARGS__) goto fail; } while (0)
 # endif
 #endif
+
+
+
+/**
+ * `dup2(OLD, NEW)` and, on success, `close(OLD)`.
+ * 
+ * @param   OLD:int  The file descriptor to duplicate and close.
+ * @param   NEW:int  The new file descriptor.
+ * @return           0 on success, -1 on error.
+ */
+#define DUP2_AND_CLOSE(OLD, NEW)  (dup2(OLD, NEW) == -1 ? -1 : (close(OLD), 0))
 
 
 
@@ -193,8 +204,6 @@ ssize_t pwriten(int fildes, const void *buf, size_t nbyte, size_t offset);
 
 /**
  * Wrapper for `read` that reads all available data.
- * 
- * Sets `errno` to `EBADMSG` on success.
  * 
  * @param   fd   The file descriptor from which to to read.
  * @param   buf  Output parameter for the data.

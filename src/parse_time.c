@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -31,6 +31,9 @@
 
 
 
+#define W(...)  do { __VA_ARGS__ } while (0)
+
+
 /**
  * The number of seconds in a day.
  */
@@ -44,14 +47,21 @@
 #define FAIL(e)  return errno = (e), -1
 
 /**
+ * Set errno to EINVAL and return if a condition is not met.
+ * 
+ * @return  cond:int  The condition.
+ */
+#define REQUIRE(cond)  W(if (!(cond))  FAIL(EINVAL);)
+
+/**
  * `a *= b` with overflow check.
  */
-#define MUL(a, b)  if (a > timemax / (b))  FAIL(ERANGE);  else  a *= (b)
+#define MUL(a, b)  W(if (a > timemax / (b))  FAIL(ERANGE);  else  a *= (b);)
 
 /**
  * `a += b` with overflow check.
  */
-#define ADD(a, b)  if (a > timemax - (b))  FAIL(ERANGE);  else  a += (b)
+#define ADD(a, b)  W(if (a > timemax - (b))  FAIL(ERANGE);  else  a += (b);)
 
 
 
@@ -63,7 +73,7 @@ extern char *argv0;
 /**
  * The highest value that can be stored in `time_t`.
  */
-const time_t timemax = (sizeof(time_t) == sizeof(long long int)) ? LLONG_MAX : LONG_MAX;
+static const time_t timemax = (sizeof(time_t) == sizeof(long long int)) ? (time_t)LLONG_MAX : (time_t)LONG_MAX;
 
 
 
@@ -90,24 +100,18 @@ strtotime(const char *str, const char **end)
 # pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 	time_t rc;
-	long long int rcll;
-	long int rcl;
 
-	if (!isdigit(*str))
-		FAIL(EINVAL);
+	REQUIRE(isdigit(*str));
+	errno = 0;
 
 	/* The outer if-statement is for when `time_t` is update to `long long int`.
 	 * which is need to avoid the year 2038 problem. Be we have to use `strtol`
 	 * if `time_t` is `long int`, otherwise we will not detect overflow. */
 
-	errno = 0;
-	if (sizeof(time_t) == sizeof(long long int)) {
-		rcll = strtoll(str, (char **)end, 10);
-		rc = (time_t)rcll;
-	} else {
-		rcl = strtol(str, (char **)end, 10);
-		rc = (time_t)rcl;
-	}
+	if (sizeof(time_t) == sizeof(long long int))
+		rc = (time_t)strtoll(str, (char **)end, 10);
+	else
+		rc = (time_t)strtol(str, (char **)end, 10);
 
 	return errno ? 0 : rc;
 #ifdef __GNUC__
@@ -119,40 +123,35 @@ strtotime(const char *str, const char **end)
 /**
  * Parse a time on the format HH:MM[:SS].
  * 
- * @param   str  The time string.
+ * @param   str  Pointer to time string, will be updated to the end
+ *               of the parsing of it.
  * @param   ts   Output parameter for the POSIX time the string
  *               represents.
- * @param   end  Output parameter for the end of the parsing of `str`.
  * @return       0 on success, -1 on error.
  * 
  * @throws  EINVAL  `str` could not be parsed.
  * @throws  ERANGE  `str` specifies a time beyond what can be stored.
  */
 static int
-parse_time_time(const char *str, struct timespec *ts, const char **end)
+parse_time_time(const char **str, struct timespec *ts)
 {
 	time_t tm;
-	memset(ts, 0, sizeof(*ts));
 
-	ts->tv_sec = strtotime(str, end), str = *end;
-	t (errno);
+	/* Hours. */
+	t (ts->tv_sec = strtotime(*str, str), errno);
 	/* Must not be restricted to 23, beyond 24 is legal. */
 	MUL(ts->tv_sec, (time_t)(60 * 60));
 
-	if (*str++ != ':')
-		FAIL(EINVAL);
-	tm = strtotime(str, end), str = *end;
-	t (errno);
-	if (tm >= 60)
-		FAIL(EINVAL);
+	/* Minutes. */
+	REQUIRE(*(*str)++ == ':');
+	t (tm = strtotime(*str, str), errno);
+	REQUIRE(tm < 60);
 	MUL(tm, (time_t)60);
 	ADD(ts->tv_sec, tm);
 
-	if (*str++ != ':')
-		return 0;
-
-	tm = strtotime(str, end);
-	t (errno);
+	/* Seconds. */
+	if (*(*str)++ != ':')  return 0;
+	t (tm = strtotime(*str, str), errno);
 	/* Do not restrict to 59, or 60, there can be more than +1 leap second. */
 	ADD(ts->tv_sec, tm);
 
@@ -165,20 +164,19 @@ fail:
 /**
  * Parse a time with only a second-count.
  * 
- * @param   str  The time string.
+ * @param   str  Pointer to time string, will be updated to the end
+ *               of the parsing of it.
  * @param   ts   Output parameter for the POSIX time the string
  *               represents.
- * @param   end  Output parameter for the end of the parsing of `str`.
  * @return       0 on success, -1 on error.
  * 
  * @throws  EINVAL  `str` could not be parsed.
  * @throws  ERANGE  `str` specifies a time beyond what can be stored.
  */
 static int
-parse_time_seconds(const char *str, struct timespec *ts, const char **end)
+parse_time_seconds(const char **str, struct timespec *ts)
 {
-	memset(ts, 0, sizeof(*ts));
-	ts->tv_sec = strtotime(str, end);
+	ts->tv_sec = strtotime(*str, str);
 	return errno ? -1 : 0;
 }
 
@@ -208,11 +206,14 @@ parse_time_seconds(const char *str, struct timespec *ts, const char **end)
 int
 parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 {
+#define FIX_NSEC(T)  (((T)->tv_nsec >= 1000000000L) ? ((T)->tv_sec += 1, (T)->tv_nsec -= 1000000000L) : 0L)
+
 	struct timespec now;
 	int points, plus = *str == '+';
 	const char *start = str;
-	const char *end;
 	time_t adj;
+
+	ts->tv_nsec = 0;
 
 	/* Get current time and clock. */
 	*clk = plus ? CLOCK_BOOTTIME : CLOCK_REALTIME;
@@ -226,14 +227,13 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 	}
 
 	/* HH:MM[:SS[.NNNNNNNNN]] or seconds? */
-	if (strchr(str, ':')) {
-		t (parse_time_time(str, ts, &end));
+	if (strchr(str += plus, ':')) {
+		t (parse_time_time(&str, ts));
 		adj = now.tv_sec - (now.tv_sec % ONE_DAY);
 		ADD(ts->tv_sec, adj); /* In case the HH is really large. */
 	} else {
-		t (parse_time_seconds(str + plus, ts, &end));
+		t (parse_time_seconds(&str, ts));
 	}
-	str = end;
 
 	/* Parse up to nanosecond resolution. */
 	if (*str != '.')
@@ -244,22 +244,19 @@ parse_time(const char *str, struct timespec *ts, clockid_t *clk)
 			ts->tv_nsec += *str & 15;
 		} else if ((points == 9) && (*str >= '5')) {
 			ts->tv_nsec += 1;
+			/* I would like to have FIX_NSEC here, but the
+			 * compile will complain and it is not worth it. */
 		}
 	}
 	while (points++ < 9)  ts->tv_nsec *= 10;
-	if (ts->tv_nsec > 999999999L) {
-		ts->tv_sec += 1;
-		ts->tv_nsec = 0;
-	}
+	FIX_NSEC(ts);
 no_nanoseconds:
 
 	/* Check for error at end, and missing explicit UTC. */
 	if (*str) {
-		if (*clk == CLOCK_BOOTTIME)
-			FAIL(EINVAL);
+		REQUIRE(*clk != CLOCK_BOOTTIME);
 		while (*str == ' ')  str++;
-		if (strcasecmp(str, "Z") && strcasecmp(str, "UTC"))
-			FAIL(EINVAL);
+		REQUIRE(!strcasecmp(str, "Z") || !strcasecmp(str, "UTC"));
 	} else if (*clk == CLOCK_REALTIME) {
 		fprintf(stderr,
 		        "%s: warning: parsing as UTC, you can avoid this warning "
@@ -270,11 +267,7 @@ no_nanoseconds:
 	if (*clk == CLOCK_BOOTTIME) {
 		ts->tv_sec += now.tv_sec;
 		ts->tv_nsec += now.tv_nsec;
-		if (ts->tv_nsec >= 1000000000L) {
-			ts->tv_sec += 1;
-			ts->tv_nsec -= 1000000000L;
-		}
-		return 0;
+		FIX_NSEC(ts);
 	} else if (ts->tv_sec < now.tv_sec) { /* Ignore partial second. */
 		ts->tv_sec += ONE_DAY;
 		if (ts->tv_sec < now.tv_sec)
@@ -282,7 +275,7 @@ no_nanoseconds:
 		if (!strchr(start, ':'))
 			fprintf(stderr,
 			        "%s: warning: the specified time is in the past, "
-				"it is being adjust to be tomorrow instead.\n", argv0);
+			        "it is being adjust to be tomorrow instead.\n", argv0);
 	}
 
 	return 0;

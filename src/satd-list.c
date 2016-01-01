@@ -1,5 +1,5 @@
 /**
- * Copyright © 2015  Mattias Andrée <maandree@member.fsf.org>
+ * Copyright © 2015, 2016  Mattias Andrée <maandree@member.fsf.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -38,7 +38,8 @@
 static char *
 quote(const char *str)
 {
-#define UNSAFE(c)  strchr(" \"$()[]{};|&^#!?*~`<>", c)
+#define UNSAFE(c)      strchr(" \"$()[]{};|&^#!?*~`<>", c)
+#define N(I, S, B, Q)  (I*in + S*sn + B*bn + Q*qn + rn)
 
 	size_t in = 0; /* < ' ' or 127 */
 	size_t sn = 0; /* in UNSAFE    */
@@ -49,10 +50,6 @@ quote(const char *str)
 	const unsigned char *s;
 	char *rc = NULL;
 
-	if (!*str) {
-		return strdup("''");
-	}
-
 	for (s = (const unsigned char *)str; *s; s++) {
 		if      (*s <  ' ')   in++;
 		else if (*s == 127)   in++;
@@ -61,25 +58,20 @@ quote(const char *str)
 		else if (*s == '\'')  qn++;
 		else                  rn++;
 	}
+	if (N(1, 1, 1, 1) == rn)
+		return strdup(rn ? str : "''");
 
-	switch (in ? 2 : (sn + bn + qn) ? 1 : 0) {
-	case 0:
-		return strdup(str);
-	case 1:
-		n = rn + sn + bn + 4 * qn + 4 * in + 2;
-		t (!(rc = malloc((n + 1) * sizeof(char))));
-		rc[i++] = '\'';
+	n = in ? (N(4, 1, 2, 2) + 3) : (N(0, 1, 1, 4) + 2);
+	t (!(rc = malloc((n + 1) * sizeof(char))));
+	rc[i += !!in] = '$';
+	rc[i += 1]    = '\'';
+	if (in == 0) {
 		for (s = (const unsigned char *)str; *s; s++) {
 			rc[i++] = (char)*s;
 			if (*s == '\'')
 				rc[i++] = '\\', rc[i++] = '\'', rc[i++] = '\'';
 		}
-		break;
-	default:
-		n = 4 * in + rn + sn + 2 * bn + 2 * qn + 3;
-		t (!(rc = malloc((n + 1) * sizeof(char))));
-		rc[i++] = '$';
-		rc[i++] = '\'';
+	} else {
 		for (s = (const unsigned char *)str; *s; s++) {
 			if ((*s <  ' ') || (*s == 127)) {
 				rc[i++] = '\\';
@@ -90,7 +82,6 @@ quote(const char *str)
 			else if (strchr("\\'", *s))  rc[i++] = '\\', rc[i++] = (char)*s;
 			else                         rc[i++] = (char)*s;
 		}
-		break;
 	}
 	rc[i++] = '\'';
 	rc[i] = '\0';
@@ -110,24 +101,14 @@ static void
 strduration(char *buffer, time_t s)
 {
 	char *buf = buffer;
-	int seconds, minutes, hours;
-	seconds = (int)(s % 60), s /= 60;
-	minutes = (int)(s % 60), s /= 60;
-	hours   = (int)(s % 24), s /= 24;
-	if (s) {
-		buf += sprintf(buf, "%llid", (long long int)s);
-		buf += sprintf(buf, "%02i:", hours);
-		buf += sprintf(buf, "%02i:", minutes);
-	} else if (hours) {
-		buf += sprintf(buf, "%i:", hours);
-		buf += sprintf(buf, "%02i:", minutes);
-	} else if (minutes) {
-		buf += sprintf(buf, "%i:", minutes);
-	} else {
-		sprintf(buf, "%i", seconds);
-		return;
-	}
-	sprintf(buf, "%02i", seconds);
+	int secs, mins, hours, sd = 0, md = 0, hd = 0;
+	secs  = (int)(s % 60), s /= 60;
+	mins  = (int)(s % 60), s /= 60;
+	hours = (int)(s % 24), s /= 24;
+	if (s)           hd++, buf += sprintf(buf, "%llid", (long long int)s);
+	if (hd | hours)  md++, buf += sprintf(buf, "%0*i:", ++hd, hours);
+	if (md | mins)   sd++, buf += sprintf(buf, "%0*i:", ++md, mins);
+	/*just for alignment*/ buf += sprintf(buf, "%0*i:", ++sd, secs);
 }
 
 
@@ -140,13 +121,21 @@ strduration(char *buffer, time_t s)
 static int
 send_job_human(struct job *job)
 {
+#define FIX_NSEC(T)  (((T)->tv_nsec < 0L) ? ((T)->tv_sec -= 1, (T)->tv_nsec += 1000000000L) : 0L)
+#define ARRAY(LIST)  \
+	for (arg = LIST; *arg; arg++) {  \
+		free(qstr);  \
+		t (!(qstr = quote(*arg)));  \
+		t (send_string(SOCK_FILENO, STDOUT_FILENO, " ", qstr, NULL));  \
+	}
+
 	struct tm *tm;
 	struct timespec rem;
 	const char *clk;
 	char rem_s[3 * sizeof(time_t) + sizeof("d00:00:00")];
 	char *qstr = NULL;
 	char *wdir = NULL;
-	char line[sizeof("job: %zu clock: unrecognised argc: %i remaining: , argv[0]: ")
+	char line[sizeof("job: %zu clock: unrecognised argc: %i remaining:  argv[0]: ")
 		  + 3 * sizeof(size_t) + 3 * sizeof(int) + sizeof(rem_s) + 9];
 	char timestr_a[sizeof("-00-00 00:00:00") + 3 * sizeof(time_t)];
 	char timestr_b[10];
@@ -162,10 +151,7 @@ send_job_human(struct job *job)
 		return errno == EINVAL ? 0 : -1;
 	rem.tv_sec  = job->ts.tv_sec  - rem.tv_sec;
 	rem.tv_nsec = job->ts.tv_nsec - rem.tv_nsec;
-	if (rem.tv_nsec < 0) {
-		rem.tv_sec -= 1;
-		rem.tv_nsec += 1000000000L;
-	}
+	FIX_NSEC(&rem);
 	if (rem.tv_sec < 0)
 		/* This job will be removed momentarily, do not list it. (To simply things.) */
 		return 0;
@@ -181,14 +167,11 @@ send_job_human(struct job *job)
 	strduration(rem_s, rem.tv_sec);
 
 	/* Get textual representation of the expiration time. */
-	switch (job->clk) {
-	case CLOCK_REALTIME:
+	if (job->clk == CLOCK_REALTIME) {
 		t (!(tm = localtime(&(job->ts.tv_sec))));
 		strftime(timestr_a, sizeof(timestr_a), "%Y-%m-%d %H:%M:%S", tm);
-		break;
-	default:
+	} else {
 		strduration(timestr_a, job->ts.tv_sec);
-		break;
 	}
 	sprintf(timestr_b, "%09li", job->ts.tv_nsec);
 
@@ -202,37 +185,19 @@ send_job_human(struct job *job)
 	t (!(wdir = quote(envp[0])));
 	sprintf(line, "job: %zu clock: %s argc: %i remaining: %s.%09li argv[0]: ",
 		job->no, clk, job->argc, rem_s, rem.tv_nsec);
-	t (send_string(SOCK_FILENO, STDOUT_FILENO,
-	               line, qstr, "\n",
-	               "  time: ", timestr_a, ".", timestr_b, "\n",
-	               "  wdir:", wdir, "\n",
-	               "  argv:",
-	               NULL));
-	for (arg = argv; *arg; arg++) {
-		free(qstr);
-		t (!(qstr = quote(*arg)));
-		t (send_string(SOCK_FILENO, STDOUT_FILENO, " ", qstr, NULL));
-	}
-	free(qstr), qstr = NULL;
-	t (send_string(SOCK_FILENO, STDOUT_FILENO, "\n  envp:", NULL));
-	for (arg = envp + 1; *arg; arg++) {
-		t (!(qstr = quote(*arg)));
-		t (send_string(SOCK_FILENO, STDOUT_FILENO, " ", qstr, NULL));
-		free(qstr);
-	}
-	qstr = NULL;
-	t (send_string(SOCK_FILENO, STDOUT_FILENO, "\n\n", NULL));
+	t (send_string(SOCK_FILENO, STDOUT_FILENO, line, qstr,
+	               "\n  time: ", timestr_a, ".", timestr_b,
+	               "\n  wdir: ", wdir,
+	               "\n  argv:", NULL));
+	free(qstr);
+	ARRAY(argv);      t (send_string(SOCK_FILENO, STDOUT_FILENO, "\n  envp:", NULL));
+	ARRAY(envp + 1);  t (send_string(SOCK_FILENO, STDOUT_FILENO, "\n\n", NULL));
 
 done:
 	saved_errno = errno;
-	free(qstr);
-	free(args);
-	free(argv);
-	free(wdir);
-	free(envp);
+	free(qstr), free(args), free(argv), free(wdir), free(envp);
 	errno = saved_errno;
 	return rc;
-
 fail:
 	rc = -1;
 	goto done;
