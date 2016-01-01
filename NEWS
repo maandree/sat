@@ -1,5 +1,14 @@
 sat NEWS                                              -*- outline -*-
 
+* Noteworthy changes in release 1.1 (2016-(01)Jan-01 UTC [hopefully]) [stable]
+
+  sat does not use a daemon socket anymore,
+  the actions of the commands are handled directly
+  in the command rather than delegated. The daemon
+  is let known via a SIGCHLD signal (not code added
+  to satd, only removed.)
+
+
 * Noteworthy changes in release 1.0 (2016-(01)Jan-01 UTC) [stable]
 
   Initial release.
